@@ -1,0 +1,264 @@
+# gpet.
+# Copyright (C) 2009 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <yocto@users.sourceforge.jp>, 2009.
+# Yoshihiro Kusuno <yocto@users.sourceforge.jp>, 2009, 2010.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-12-16 17:36+0900\n"
+"PO-Revision-Date: 2010-12-16 17:38+0900\n"
+"Last-Translator: Yoshihiro Kusuno <yocto@users.sourceforge.jp>\n"
+"Language-Team: Japanese < >\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../src/gpet.c:961 ../src/gpet.c:985
+msgid "gpet"
+msgstr "ｇｐｅｔ"
+
+#. create tab
+#: ../src/gpet.c:1069 ../src/menu.c:249
+msgid "Domain Transition"
+msgstr "ドメイン遷移 一覧"
+
+#: ../src/gpet.c:1070
+msgid "Exception Policy"
+msgstr "例外ポリシー 一覧"
+
+#: ../src/gpet.c:1071
+msgid "Profile"
+msgstr "プロファイル 一覧"
+
+#: ../src/menu.c:43
+msgid "_File"
+msgstr "ファイル(_F)"
+
+#: ../src/menu.c:44 ../src/other.c:47
+msgid "_Edit"
+msgstr "編集(_E)"
+
+#: ../src/menu.c:45
+msgid "_View"
+msgstr "表示(_V)"
+
+#: ../src/menu.c:46
+msgid "_Help"
+msgstr "ヘルプ(_H)"
+
+#: ../src/menu.c:48
+msgid "_Quit"
+msgstr "終了(_Q)"
+
+#: ../src/menu.c:49
+msgid "Quit a program"
+msgstr "プログラムを終了します。"
+
+#: ../src/menu.c:51
+msgid "S_et"
+msgstr "編集(_E)"
+
+#: ../src/menu.c:52
+msgid "Set or Edit the selected line"
+msgstr "選択した行を修正します。"
+
+#: ../src/menu.c:53 ../src/other.c:49
+msgid "_Add"
+msgstr "追加(_Ａ)"
+
+#: ../src/menu.c:54 ../src/other.c:50
+msgid "Append line"
+msgstr "追加します。"
+
+#: ../src/menu.c:55 ../src/other.c:51
+msgid "_Delete"
+msgstr "削除(_D)"
+
+#: ../src/menu.c:56 ../src/other.c:52
+msgid "Delete the selected line"
+msgstr "選択した行を削除します。"
+
+#: ../src/menu.c:58
+msgid "_Search"
+msgstr "検索(_S)"
+
+#: ../src/menu.c:59
+msgid "Search for text"
+msgstr "文字列を検索します。"
+
+#: ../src/menu.c:60
+msgid "Search_Backwards"
+msgstr "後方検索(_B)"
+
+#: ../src/menu.c:61
+msgid "Search backwards for the same text"
+msgstr "後方検索します。"
+
+#: ../src/menu.c:62
+msgid "SearchFor_wards"
+msgstr "前方検索(_W)"
+
+#: ../src/menu.c:63
+msgid "Search forwards for the same text"
+msgstr "前方検索します。"
+
+#: ../src/menu.c:65
+msgid "_Refresh"
+msgstr "更新(_R)"
+
+#: ../src/menu.c:66
+msgid "Refresh to the latest information"
+msgstr "再読み込みを行います。"
+
+#: ../src/menu.c:67
+msgid "_Manager"
+msgstr "マネージャ(_M)"
+
+#: ../src/menu.c:68
+msgid "Manager Profile Editor"
+msgstr "マネージャ 一覧"
+
+#: ../src/menu.c:69
+msgid "Memory_Usage"
+msgstr "メモリ使用量(_U)"
+
+#: ../src/menu.c:70 ../src/other.c:602
+msgid "Memory Usage"
+msgstr "メモリ使用量"
+
+#: ../src/menu.c:72
+msgid "_About"
+msgstr "gpetについて(_A)"
+
+#: ../src/menu.c:73
+msgid "About a program"
+msgstr "このプログラムについて表示します。"
+
+#: ../src/menu.c:78
+msgid "Pr_ocess"
+msgstr "プロセス(_O)"
+
+#: ../src/menu.c:79
+msgid "Process State Viewer"
+msgstr "ドメイン一覧とプロセス一覧を切り替えます。"
+
+#: ../src/menu.c:246
+msgid "Process State"
+msgstr "プロセス 一覧"
+
+#: ../src/menu.c:388
+#, c-format
+msgid "Delete the %d selected exception policies?"
+msgstr "選択した %d行の例外ポリシーを削除します。"
+
+#: ../src/menu.c:389
+#, c-format
+msgid "Delete the selected exception policy?"
+msgstr "選択した例外ポリシーを削除します。"
+
+#: ../src/menu.c:404
+#, c-format
+msgid "Delete the %d selected domains?"
+msgstr "選択した %d行のドメインを削除します。"
+
+#: ../src/menu.c:405
+#, c-format
+msgid "Delete the selected domain?"
+msgstr "選択したドメインを削除します。"
+
+#: ../src/menu.c:420
+#, c-format
+msgid "Delete the %d selected policies?"
+msgstr "選択した %d行のアクセス許可を削除します。"
+
+#: ../src/menu.c:421
+#, c-format
+msgid "Delete the selected policy?"
+msgstr "選択したアクセス許可を削除します。"
+
+#: ../src/menu.c:531
+msgid "Add Domain"
+msgstr "ドメインを追加します。"
+
+#: ../src/menu.c:537
+msgid "Add Acl"
+msgstr "ドメインに対するアクセス許可を追加します。"
+
+#: ../src/menu.c:548
+msgid "Add Exception"
+msgstr "例外ポリシーを追加します。"
+
+#: ../src/menu.c:555
+msgid "Add Profile"
+msgstr "プロファイルを追加します。"
+
+#: ../src/menu.c:687
+msgid "Profile list"
+msgstr "プロファイルを選択します。"
+
+#: ../src/menu.c:748
+msgid "Profile Edit"
+msgstr "プロファイルを変更します。"
+
+#: ../src/menu.c:829
+msgid "Yoshihiro Kusuno <yocto@users.sourceforge.jp>"
+msgstr "楠野　佳宏 <yocto@users.sourceforge.jp>"
+
+#: ../src/menu.c:830
+msgid "ccstools --- kumaneko san"
+msgstr "ccstools --- 熊猫さん"
+
+#: ../src/menu.c:832
+msgid "Yoshihiro Kusuno"
+msgstr "楠野　佳宏"
+
+#: ../src/other.c:48
+msgid "Edit the selected line"
+msgstr "選択した行を修正します。"
+
+#: ../src/other.c:228
+msgid "File Selection Dialog"
+msgstr "ファイルの選択"
+
+#: ../src/other.c:268
+msgid "Manager Add"
+msgstr "マネージャを追加します。"
+
+#: ../src/other.c:346
+#, c-format
+msgid "Delete the %d selected managers?"
+msgstr "選択した %d行のマネージャ登録を削除します。"
+
+#: ../src/other.c:347
+#, c-format
+msgid "Delete the selected manager?"
+msgstr "選択したマネージャ登録を削除します。"
+
+#: ../src/other.c:381
+msgid "Manager Policy"
+msgstr "マネージャ 一覧"
+
+#: ../src/other.c:533
+msgid "Memory used     "
+msgstr "メモリ使用量"
+
+#: ../src/other.c:540
+msgid " Now (bytes) "
+msgstr "　使用量（バイト） "
+
+#: ../src/other.c:550
+msgid " Quota (bytes) "
+msgstr "　　最大 （バイト)　"
+
+#~ msgid "C_ut"
+#~ msgstr "切り取り(_U)"
+
+#~ msgid "_Copy"
+#~ msgstr "コピー(_C)"
+
+#~ msgid "_Paste"
+#~ msgstr "貼り付け(_P)"
