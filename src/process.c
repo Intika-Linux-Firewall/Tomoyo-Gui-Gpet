@@ -208,10 +208,10 @@ GtkWidget *create_task_tree_model(transition_t *transition)
 	// 開く位置
 	gtk_tree_view_set_expander_column(GTK_TREE_VIEW(treeview), column);
 	gtk_tree_view_column_set_spacing(column, 1);
-		// ツリーインデント pixel
-	gtk_tree_view_set_level_indentation(GTK_TREE_VIEW(treeview), 2);
-		// ツリー開くマーク
-	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(treeview), TRUE);
+		// ツリーインデント pixel(2.12)
+//	gtk_tree_view_set_level_indentation(GTK_TREE_VIEW(treeview), 2);
+		// ツリー開くマーク(2.12)
+//	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(treeview), TRUE);
 	g_object_set(G_OBJECT(treeview), "enable-tree-lines", TRUE,
 						NULL);
 	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(treeview),

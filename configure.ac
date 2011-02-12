@@ -35,7 +35,7 @@ AM_PROG_LIBTOOL
 
 
 
-PKG_CHECK_MODULES(GPET, [gtk+-2.0 >= 2.12 gconf-2.0 >= 2.31])
+PKG_CHECK_MODULES(GPET, [gtk+-2.0 >= 2.10 gconf-2.0 >= 2.14])
 
 
 

@@ -499,7 +499,8 @@ static void cb_cell_edited(GtkCellRendererText *cell,
 	gtk_tree_model_get(model, &iter, LIST_QUOTA, &old_text, -1);
 
 	index = gtk_tree_path_get_indices(path)[0];
-	if (g_strcmp0(old_text, new_text))
+//(2.16)	if (g_strcmp0(old_text, new_text))
+	if (strcmp(old_text, new_text))
 		mem->list[index].selected = 1;
 	g_free(old_text);
 

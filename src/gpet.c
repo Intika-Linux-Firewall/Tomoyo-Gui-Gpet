@@ -1003,10 +1003,10 @@ int gpet_main(void)
 				box, treeview, gtk_paned_pack1, TRUE);
 	add_tree_data(GTK_TREE_VIEW(treeview), &dp);
 	gtk_tree_view_expand_all(GTK_TREE_VIEW(treeview));
-		// ツリーインデント pixel
-	gtk_tree_view_set_level_indentation(GTK_TREE_VIEW(treeview), 0);
-		// ツリー開くマーク
-	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(treeview), TRUE);
+		// ツリーインデント pixel(2.12)
+//	gtk_tree_view_set_level_indentation(GTK_TREE_VIEW(treeview), 0);
+		// ツリー開くマーク(2.12)
+//	gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(treeview), TRUE);
 	g_object_set(G_OBJECT(treeview), "enable-tree-lines", FALSE,
 						NULL);
 //	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(treeview),
