@@ -3,18 +3,18 @@
  * Gui Policy Editor for TOMOYO Linux
  *
  * menu.c
- * Copyright (C) Yoshihiro Kusuno 2010 <yocto@users.sourceforge.jp>
- * 
+ * Copyright (C) Yoshihiro Kusuno 2010,2011 <yocto@users.sourceforge.jp>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
@@ -30,13 +30,17 @@
 #include "gpet.h"
 
 static void terminate(GtkAction *action, transition_t *transition);
+static void copy_line(GtkAction *action, transition_t *transition);
+static void optimize_acl(GtkAction *action, transition_t *transition);
 static void delete_transition(GtkAction *action, transition_t *transition);
+static void insert_history_buffer(GtkWidget *view, gchar *entry);
 static void append_transition(GtkAction *action, transition_t *transition);
 static void set_transition(GtkAction *action, transition_t *transition);
 static void manager_transition(GtkAction *action, transition_t *transition);
 static void memory_transition(GtkAction *action, transition_t *transition);
 static void show_about_dialog(void);
 static void Process_state(GtkAction *action, transition_t *transition);
+static void Detach_acl(GtkAction *action, transition_t *transition);
 
 static GtkActionEntry entries[] = {
   {"FileMenu", NULL, N_("_File")},
@@ -53,20 +57,26 @@ static GtkActionEntry entries[] = {
 	N_("Append line"), G_CALLBACK(append_transition)},
   {"Delete", GTK_STOCK_DELETE, N_("_Delete"), "<control>D",
 	N_("Delete the selected line"), G_CALLBACK(delete_transition)},
+  {"Copy", GTK_STOCK_COPY, N_("_Copy"), "<control>C",
+	N_("Copy an entry at the cursor position to history buffer"),
+	G_CALLBACK(copy_line)},
+  {"OptimizationSupport", GTK_STOCK_CONVERT,
+	N_("_OptimizationSupport"), "<control>O",
+	N_("Extraction of redundant ACL entries"), G_CALLBACK(optimize_acl)},
 
   {"Search", GTK_STOCK_FIND, N_("_Search"), "<control>F",
-	N_("Search for text"), NULL},
-  {"SearchBack", GTK_STOCK_GO_BACK, N_("Search_Backwards"), "<control>P",
-	N_("Search backwards for the same text"), NULL},
-  {"SearchFoward", GTK_STOCK_GO_FORWARD, N_("SearchFor_wards"), "<control>N",
-	N_("Search forwards for the same text"), NULL},
+	N_("Search for text"), G_CALLBACK(search_input)},
+  {"SearchBack", GTK_STOCK_GO_BACK, N_("Search_Backwards"), "<control><shift>G",
+	N_("Search backwards for the same text"), G_CALLBACK(search_back)},
+  {"SearchFoward", GTK_STOCK_GO_FORWARD, N_("SearchFor_wards"), "<control>G",
+	N_("Search forwards for the same text"), G_CALLBACK(search_forward)},
 
   {"Refresh", GTK_STOCK_REFRESH, N_("_Refresh"), "<control>R",
 	N_("Refresh to the latest information"), G_CALLBACK(refresh_transition)},
   {"Manager", GTK_STOCK_DND, N_("_Manager"), "<control>M",
 	N_("Manager Profile Editor"), G_CALLBACK(manager_transition)},
-  {"Memory", GTK_STOCK_DND, N_("Memory_Usage"), "<control>U",
-	N_("Memory Usage"), G_CALLBACK(memory_transition)},
+  {"Memory", GTK_STOCK_DND, N_("_Statistics"), "<control>S",
+	N_("Statistics"), G_CALLBACK(memory_transition)},
 
   {"About", GTK_STOCK_ABOUT, N_("_About"), "<alt>A",
 	N_("About a program"), show_about_dialog}
@@ -74,12 +84,14 @@ static GtkActionEntry entries[] = {
 static guint n_entries = G_N_ELEMENTS(entries);
 
 static GtkToggleActionEntry toggle_entries[] = {
-  { "Process", GTK_STOCK_MEDIA_RECORD, N_("Pr_ocess"), "<control>O",
+  { "Process", GTK_STOCK_MEDIA_RECORD, N_("Process"), "<control>at",
 	N_("Process State Viewer"), G_CALLBACK(Process_state), FALSE},
+  { "ACL", "", N_("Detach ACL"), "",
+	N_("Detach ACL window"), G_CALLBACK(Detach_acl), FALSE},
 };
 static guint n_toggle_entries = G_N_ELEMENTS(toggle_entries);
 
-static const gchar *ui_info = 
+static const gchar *ui_info =
 "<ui>"
 "  <menubar name='MenuBar'>"
 "    <menu action='FileMenu'>"
@@ -90,6 +102,9 @@ static const gchar *ui_info =
 "      <menuitem action='Edit'/>"
 "      <menuitem action='Add'/>"
 "      <menuitem action='Delete'/>"
+"      <separator/>"
+"      <menuitem action='Copy'/>"
+"      <menuitem action='OptimizationSupport'/>"
 "      <separator/>"
 "      <menuitem action='Search'/>"
 "      <menuitem action='SearchBack'/>"
@@ -103,6 +118,8 @@ static const gchar *ui_info =
 "      <menuitem action='Memory'/>"
 "      <separator/>"
 "      <menuitem action='Process'/>"
+"      <separator/>"
+"      <menuitem action='ACL'/>"
 "    </menu>"
 
 "    <menu action='HelpMenu'>"
@@ -116,6 +133,9 @@ static const gchar *ui_info =
 "    <toolitem action='Edit'/>"
 "    <toolitem action='Add'/>"
 "    <toolitem action='Delete'/>"
+"    <separator/>"
+"    <toolitem action='Copy'/>"
+"    <toolitem action='OptimizationSupport'/>"
 "    <separator/>"
 "    <toolitem action='Search'/>"
 "    <toolitem action='SearchBack'/>"
@@ -132,6 +152,9 @@ static const gchar *ui_info =
 "      <menuitem action='Edit'/>"
 "      <menuitem action='Add'/>"
 "      <menuitem action='Delete'/>"
+"      <separator/>"
+"      <menuitem action='Copy'/>"
+"      <menuitem action='OptimizationSupport'/>"
 "  </popup>"
 "</ui>";
 
@@ -139,7 +162,8 @@ GtkWidget *create_menu(GtkWidget *parent, transition_t *transition,
 				GtkWidget **toolbar)
 {
 	GtkUIManager		*ui;
-	GtkActionGroup 	*actions;
+	GtkActionGroup		*actions;
+	GtkAccelGroup		*accel_group;
 	GError			*error = NULL;
 	GtkWidget		*popup;
 
@@ -147,26 +171,35 @@ GtkWidget *create_menu(GtkWidget *parent, transition_t *transition,
 	gtk_action_group_set_translation_domain(actions, GETTEXT_PACKAGE);
 	gtk_action_group_add_actions(actions,
 			entries, n_entries, transition);
-	gtk_action_group_add_toggle_actions(actions, 
+	gtk_action_group_add_toggle_actions(actions,
 			toggle_entries, n_toggle_entries, transition);
 
 	ui = gtk_ui_manager_new();
 	gtk_ui_manager_insert_action_group(ui, actions, 0);
 
 	gtk_action_set_sensitive(
-		gtk_action_group_get_action(actions, "Search"), FALSE);
+		gtk_action_group_get_action(actions, "Search"), TRUE);
 	gtk_action_set_sensitive(
 		gtk_action_group_get_action(actions, "SearchBack"), FALSE);
 	gtk_action_set_sensitive(
 		gtk_action_group_get_action(actions, "SearchFoward"), FALSE);
 	gtk_action_set_sensitive(
 		gtk_action_group_get_action(actions, "Edit"), FALSE);
+	gtk_action_set_sensitive(gtk_action_group_get_action(
+				actions, "OptimizationSupport"), FALSE);
+
+	if (is_offline()) {
+		gtk_action_set_sensitive(
+			gtk_action_group_get_action(actions, "Process"), FALSE);
+		gtk_action_set_sensitive(
+			gtk_action_group_get_action(actions, "Memory"), FALSE);
+	}
 
 	transition->actions = actions;
 
 //	gtk_ui_manager_set_add_tearoffs(ui, TRUE);
-	gtk_window_add_accel_group(GTK_WINDOW(parent), 
-				gtk_ui_manager_get_accel_group(ui));
+	accel_group = gtk_ui_manager_get_accel_group(ui);
+	gtk_window_add_accel_group(GTK_WINDOW(parent), accel_group);
 	if (!gtk_ui_manager_add_ui_from_string(ui, ui_info, -1, NULL)) {
 		g_message ("building menus failed: %s", error->message);
 		g_error_free (error);
@@ -178,6 +211,10 @@ GtkWidget *create_menu(GtkWidget *parent, transition_t *transition,
 	/* to save gpet.c popup_menu() */
 	popup = gtk_ui_manager_get_widget(ui, "/PopUp");
 	g_object_set_data(G_OBJECT(transition->window), "popup", popup);
+
+	/* to save gpet.c gpet_main() */
+	g_object_set_data(G_OBJECT(transition->window),
+						"AccelGroup", accel_group);
 
 	return gtk_ui_manager_get_widget(ui, "/MenuBar");
 }
@@ -227,11 +264,78 @@ static void terminate(GtkAction *action, transition_t *transition)
 	gtk_main_quit();
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
+static gulong handler_id = 0UL;
+
+static gboolean cb_destroy_acl(GtkWidget *widget, GdkEvent *event,
+					transition_t *transition)
+{
+	GtkWidget	*acl_container;
+	GtkPaned	*paned;
+
+	if (handler_id == 0UL)
+		return FALSE;
+
+	/* get gpet.c main()*/
+	acl_container = g_object_get_data(G_OBJECT(transition->window), "acl_container");
+	paned = g_object_get_data(G_OBJECT(transition->window), "pane");
+
+	g_signal_handler_disconnect(
+			G_OBJECT(transition->acl_window), handler_id);
+	handler_id = 0UL;
+
+	gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(
+		gtk_action_group_get_action(transition->actions, "ACL")), FALSE);
+	transition->acl_detached = FALSE;
+
+	gtk_widget_reparent(GTK_WIDGET(transition->container),
+					GTK_WIDGET(paned));
+
+	gtk_widget_reparent(GTK_WIDGET(acl_container),
+					GTK_WIDGET(paned));
+
+	transition->current_page = CCS_SCREEN_DOMAIN_LIST;
+	set_sensitive(transition->actions, transition->task_flag,
+						transition->current_page);
+	refresh_transition(NULL, transition);
+
+	return gtk_widget_hide_on_delete(transition->acl_window);
+}
+
+static void Detach_acl(GtkAction *action, transition_t *transition)
+{
+	GtkWidget	*acl_container;
+	GtkPaned	*paned;
+	/* get gpet.c main()*/
+	acl_container = g_object_get_data(G_OBJECT(transition->window), "acl_container");
+	paned = g_object_get_data(G_OBJECT(transition->window), "pane");
+
+	if (transition->acl_detached) {
+		cb_destroy_acl(NULL, NULL, transition);
+	} else {
+		gtk_toggle_action_set_active(GTK_TOGGLE_ACTION(
+			gtk_action_group_get_action(transition->actions, "ACL")), TRUE);
+		transition->acl_detached = TRUE;
+		handler_id = g_signal_connect(
+			G_OBJECT(transition->acl_window), "delete_event",
+			G_CALLBACK(cb_destroy_acl), transition);
+		gtk_widget_reparent(GTK_WIDGET(acl_container),
+					transition->acl_window);
+		gtk_widget_show_all(transition->acl_window);
+
+		gtk_widget_reparent(GTK_WIDGET(transition->container),
+					GTK_WIDGET(paned));
+		transition->current_page = CCS_SCREEN_ACL_LIST;
+		set_sensitive(transition->actions, transition->task_flag,
+						transition->current_page);
+		refresh_transition(NULL, transition);
+	}
+}
+/*-------+---------+---------+---------+---------+---------+---------+--------*/
 static void Process_state(GtkAction *action, transition_t *transition)
 {
 	GtkWidget	*view;
 	GtkWidget	*notebook;
-	GtkWidget	*vbox2;
+	GtkWidget	*tab1;
 	gchar		*label_str;
 
 	view = transition->task_flag ?
@@ -252,17 +356,23 @@ static void Process_state(GtkAction *action, transition_t *transition)
 	/* from gpet.c:gpet_main()*/
 	notebook = g_object_get_data(
 				G_OBJECT(transition->window), "notebook");
-	vbox2 = g_object_get_data(
-				G_OBJECT(transition->window), "vbox2");
+	tab1 = g_object_get_data(
+				G_OBJECT(transition->window), "tab1");
 	gtk_notebook_set_tab_label_text(
-				GTK_NOTEBOOK(notebook), vbox2, label_str);
+				GTK_NOTEBOOK(notebook), tab1, label_str);
 	gtk_notebook_set_menu_label_text(
-				GTK_NOTEBOOK(notebook), vbox2, label_str);
+				GTK_NOTEBOOK(notebook), tab1, label_str);
 
 	gtk_container_add(transition->container, view);
 
 	transition->current_page = CCS_SCREEN_DOMAIN_LIST;
-	refresh_transition(NULL, transition);
+	set_sensitive(transition->actions, transition->task_flag,
+						transition->current_page);
+	if (transition->acl_detached)
+		g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
+	else
+		g_object_set(G_OBJECT(notebook), "can-focus", TRUE, NULL);
+	refresh_transition(action, transition);
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 void view_cursor_set(GtkWidget *view,
@@ -271,16 +381,17 @@ void view_cursor_set(GtkWidget *view,
 	if (!path) {
 		path = gtk_tree_path_new_from_indices(0, -1);
 	}
-	gtk_tree_view_set_cursor(
-			GTK_TREE_VIEW(view), path, column, FALSE);
-	gtk_tree_view_row_activated(GTK_TREE_VIEW(view), path, column);
-/*
+
 	{
 		gchar *path_str = gtk_tree_path_to_string(path);
-		g_debug("TreePath[%s]", path_str);
+		DEBUG_PRINT("<%s> TreePath[%s]\n",
+			g_type_name(G_OBJECT_TYPE(view)), path_str);
 		g_free(path_str);
 	}
-*/
+	gtk_tree_view_set_cursor(
+			GTK_TREE_VIEW(view), path, column, FALSE);
+	gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(view), path, NULL,
+						TRUE, 0.5, 0.0);	// ksn
 	gtk_tree_path_free(path);
 }
 
@@ -288,32 +399,35 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 {
 	GtkTreePath		*path = NULL;
 	GtkTreeViewColumn	*column = NULL;
-	GtkWidget		*view;
+	GtkWidget		*view = NULL;
 
+	DEBUG_PRINT("In  Refresh Page[%d]\n", (int)transition->current_page);
 	switch((int)transition->current_page) {
 	case CCS_SCREEN_EXCEPTION_LIST :
-		gtk_tree_view_get_cursor(GTK_TREE_VIEW(
-			transition->exp.listview), &path, &column);
+		view = transition->exp.listview;
+		gtk_tree_view_get_cursor(GTK_TREE_VIEW(view),
+							&path, &column);
 		if (get_exception_policy(
 		    &(transition->exp.list), &(transition->exp.count)))
 			break;
 		add_list_data(&(transition->exp), TRUE);
+		set_position_addentry(transition, &path);
 		disp_statusbar(transition, CCS_SCREEN_EXCEPTION_LIST);
-		view_cursor_set(transition->exp.listview, path, column);
-//		gtk_widget_set_can_focus(transition->exp.listview, TRUE);
-		gtk_widget_grab_focus(transition->exp.listview);
-//		gtk_widget_set_state(transition->exp.listview, GTK_STATE_SELECTED);
+		view_cursor_set(view, path, column);
+		gtk_widget_grab_focus(view);
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
-		gtk_tree_view_get_cursor(GTK_TREE_VIEW(
-			transition->prf.listview), &path, &column);
+		view = transition->prf.listview;
+		gtk_tree_view_get_cursor(GTK_TREE_VIEW(view),
+							&path, &column);
 		if (get_profile(
 		    &(transition->prf.list), &(transition->prf.count)))
 			break;
 		add_list_data(&(transition->prf), FALSE);
+		set_position_addentry(transition, &path);
 		disp_statusbar(transition, CCS_SCREEN_PROFILE_LIST);
-		view_cursor_set(transition->prf.listview, path, column);
-		gtk_widget_grab_focus(transition->prf.listview);
+		view_cursor_set(view, path, column);
+		gtk_widget_grab_focus(view);
 		break;
 	case CCS_SCREEN_DOMAIN_LIST :
 	case CCS_MAXSCREEN :
@@ -322,22 +436,35 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 		gtk_tree_view_get_cursor(
 				GTK_TREE_VIEW(view), &path, &column);
 
+		gtk_widget_hide(view);
 		if (transition->task_flag) {
 			if (get_task_list(&(transition->tsk.task),
 						&(transition->tsk.count)))
 				break;
 			add_task_tree_data(GTK_TREE_VIEW(view), &(transition->tsk));
+			gtk_tree_view_expand_all(GTK_TREE_VIEW(view));
 		} else {
 			if (get_domain_policy(
 			    transition->dp, &(transition->domain_count)))
 				break;
 			add_tree_data(GTK_TREE_VIEW(view), transition->dp);
+			gtk_tree_view_expand_all(GTK_TREE_VIEW(view));
+			set_position_addentry(transition, &path);
 		}
 
-		gtk_tree_view_expand_all(GTK_TREE_VIEW(view));
 		view_cursor_set(view, path, column);
-		gtk_widget_grab_focus(view);
 		gtk_widget_show(view);
+#if 0
+		if (transition->acl_detached) {	// get focus
+			gtk_widget_grab_focus(transition->acl.listview);
+			DEBUG_PRINT("☆Transition[%d] Acl[%d]\n",
+				gtk_window_has_toplevel_focus(GTK_WINDOW(transition->window)),
+				gtk_window_has_toplevel_focus(GTK_WINDOW(transition->acl_window)));
+		} else {
+			gtk_widget_grab_focus(view);
+		}
+#endif
+		gtk_widget_grab_focus(view);
 		break;
 	case CCS_SCREEN_ACL_LIST :
 		view = transition->task_flag ?
@@ -348,6 +475,116 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 		gtk_widget_grab_focus(transition->acl.listview);
 		break;
 	}
+
+	if (transition->acl_detached) {
+		DEBUG_PRINT("★Transition[%d] Acl[%d]\n",
+		gtk_window_has_toplevel_focus(GTK_WINDOW(transition->window)),
+		gtk_window_has_toplevel_focus(GTK_WINDOW(transition->acl_window)));
+	}
+	DEBUG_PRINT("Out  Refresh Page[%d]\n", (int)transition->current_page);
+}
+/*-------+---------+---------+---------+---------+---------+---------+--------*/
+static void copy_line(GtkAction *action, transition_t *transition)
+{
+	gint		index;
+	GtkWidget	*view;
+
+	switch((int)transition->current_page) {
+	case CCS_SCREEN_DOMAIN_LIST :
+		index = get_current_domain_index(transition);
+		view = transition->treeview;
+		if (index >= 0)
+			insert_history_buffer(view, g_strdup(
+				ccs_domain_name(transition->dp, index)));
+		break;
+	case CCS_SCREEN_ACL_LIST :
+		view = transition->acl.listview;
+		insert_history_buffer(view, get_alias_and_operand(view));
+		break;
+	case CCS_SCREEN_EXCEPTION_LIST :
+		view = transition->exp.listview;
+		insert_history_buffer(view, get_alias_and_operand(view));
+		break;
+	default :
+		break;
+	}
+}
+/*-------+---------+---------+---------+---------+---------+---------+--------*/
+static void optimize_acl(GtkAction *action, transition_t *transition)
+{
+	GtkTreeSelection	*selection;
+	GtkTreeModel		*model;
+	gint			count, current;
+
+	if ((int)transition->current_page != CCS_SCREEN_ACL_LIST)
+		return;
+
+	selection = gtk_tree_view_get_selection(
+				GTK_TREE_VIEW(transition->acl.listview));
+	if (!selection || !(count =
+	    gtk_tree_selection_count_selected_rows(selection)))
+		return;
+	DEBUG_PRINT("count[%d]\n", count);
+
+	// current位置を取得：
+	current = select_list_line(&(transition->acl));
+	if (current < 0)
+		return;
+
+	get_optimize_acl_list(current,
+			&(transition->acl.list), transition->acl.count);
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(transition->acl.listview));
+	gtk_tree_model_foreach(model,
+		(GtkTreeModelForeachFunc)disp_acl_line, &(transition->acl));
+
+#if 0
+	gint			index;
+	GtkTreePath		*start_path, *end_path;
+	gint			start_index, end_index;
+	// 表示処理
+	start_path = end_path = gtk_tree_path_new_from_indices(current, -1);
+	gtk_tree_selection_unselect_range(selection, start_path, end_path);
+
+	for (index = 0; index < transition->acl.count; index++) {
+		if (transition->acl.list[index].selected)
+			break;
+	}
+	end_path = NULL;
+	start_path = gtk_tree_path_new_from_indices(index, -1);
+	start_index = end_index = index;
+	count = -1;
+	for ( ; index < transition->acl.count; index++) {
+		count++;
+		// 対象データ：ccs_gacl_list[index].selected == 1;
+		if (!transition->acl.list[index].selected)
+			continue;
+
+		//パス取得：
+		if (index == (start_index + count)) {
+			end_path = gtk_tree_path_new_from_indices(index, -1);
+			end_index = index;
+		} else {
+			if (!end_path)
+				end_path = start_path;
+
+			// カーソルセット：
+g_print("start[%d] end[%d]\n", start_index, end_index);
+			gtk_tree_selection_select_range(
+					selection, start_path, end_path);
+
+			start_path = gtk_tree_path_new_from_indices(index, -1);
+			start_index = index;
+			count = 0;
+			end_path = NULL;
+		}
+	}
+
+	if (end_path) {
+g_print("start[%d] end[%d]\n", start_index, end_index);
+		gtk_tree_selection_select_range(selection, start_path, end_path);
+	}
+#endif
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 static gint message_dialog(GtkWidget *parent, gchar *message)
@@ -355,10 +592,11 @@ static gint message_dialog(GtkWidget *parent, gchar *message)
 	GtkWidget	*dialog;
 	gint		result;
 
-	dialog = gtk_message_dialog_new(GTK_WINDOW(parent) ,
+	dialog = gtk_message_dialog_new_with_markup(GTK_WINDOW(parent) ,
 			GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 			GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
-			"%s", message);
+			NULL);
+	gtk_message_dialog_set_markup(GTK_MESSAGE_DIALOG(dialog), message);
 
 	result = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
@@ -370,6 +608,7 @@ static void delete_transition(GtkAction *action, transition_t *transition)
 {
 	GtkTreeSelection	*selection;
 	gint			count;
+	GtkWidget		*parent;
 	gchar			*message = NULL;
 	gint			ret = 1;
 
@@ -379,13 +618,17 @@ static void delete_transition(GtkAction *action, transition_t *transition)
 	case CCS_SCREEN_EXCEPTION_LIST :
 		selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(transition->exp.listview));
-		if (!selection || !(count = 
+		if (!selection || !(count =
 		    gtk_tree_selection_count_selected_rows(selection)))
 			break;
 		DEBUG_PRINT("count[%d]\n", count);
-		message = count > 1 ? 
-		 g_strdup_printf(_("Delete the %d selected exception policies?"), count) :
-		 g_strdup_printf(_("Delete the selected exception policy?"));
+		message = count > 1 ?
+		 g_strdup_printf(_(
+			"<span foreground='red' size='x-large'>"
+			"<b>Delete</b> the %d selected exception policies?</span>"), count) :
+		 g_strdup_printf(_(
+			"<span foreground='red' size='x-large'>"
+			"<b>Delete</b> the selected exception policy?</span>"));
 		if (GTK_RESPONSE_YES ==
 		    message_dialog(transition->window, message)) {
 			ret = delete_exp(transition, selection, count);
@@ -395,13 +638,17 @@ static void delete_transition(GtkAction *action, transition_t *transition)
 	case CCS_MAXSCREEN :
 		selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(transition->treeview));
-		if (!selection || !(count = 
+		if (!selection || !(count =
 		    gtk_tree_selection_count_selected_rows(selection)))
 			break;
 		DEBUG_PRINT("count[%d]\n", count);
-		message = count > 1 ? 
-		 g_strdup_printf(_("Delete the %d selected domains?"), count) :
-		 g_strdup_printf(_("Delete the selected domain?"));
+		message = count > 1 ?
+		 g_strdup_printf(_(
+			"<span foreground='red' size='x-large'>"
+			"<b>Delete</b> the %d selected domains?</span>"), count) :
+		 g_strdup_printf(_(
+			"<span foreground='red' size='x-large'>"
+			"<b>Delete</b> the selected domain?</span>"));
 		if (GTK_RESPONSE_YES ==
 		    message_dialog(transition->window, message)) {
 			ret = delete_domain(transition, selection, count);
@@ -411,15 +658,21 @@ static void delete_transition(GtkAction *action, transition_t *transition)
 		DEBUG_PRINT("Delete ACL\n");
 		selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(transition->acl.listview));
-		if (!selection || !(count = 
+		if (!selection || !(count =
 		    gtk_tree_selection_count_selected_rows(selection)))
 			break;
 		DEBUG_PRINT("count[%d]\n", count);
-		message = count > 1 ? 
-		 g_strdup_printf(_("Delete the %d selected policies?"), count) :
-		 g_strdup_printf(_("Delete the selected policy?"));
-		if (GTK_RESPONSE_YES ==
-		    message_dialog(transition->window, message)) {
+		parent = transition->acl_detached ?
+			transition->acl_window : transition->window;
+		message = count > 1 ?
+		 g_strdup_printf(_(
+			"<span foreground='blue' size='x-large'>"
+			"<b>Delete</b> the %d selected policies?</span>"), count) :
+		 g_strdup_printf(_(
+			"<span foreground='blue' size='x-large'>"
+			"<b>Delete</b> the selected policy?</span>"));
+  		if (GTK_RESPONSE_YES ==
+		    message_dialog(parent, message)) {
 			ret = delete_acl(transition, selection, count);
 		}
 		break;
@@ -434,23 +687,42 @@ static void delete_transition(GtkAction *action, transition_t *transition)
 		refresh_transition(NULL, transition);
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
-static GList* append_item(GtkComboBox	*combobox,
-				GList *cmblist, const gchar *item_label)
-{
-	gtk_combo_box_append_text(combobox, g_strdup(item_label));
-	return g_list_append(cmblist, g_strdup(item_label));
-}
-static GList* remove_item(GtkComboBox *combobox,
-				GList *cmblist, gint index)
-{
-	gtk_combo_box_remove_text(combobox, index);
-	g_free (g_list_nth_data(cmblist, index));
-	return g_list_remove_link(cmblist,
-					g_list_nth(cmblist, index));
-}
-
 #define COMBO_LIST_LIMIT	20
 static GList	*combolist = NULL;
+static gchar	*Last_entry_string = NULL;
+
+gchar *get_combo_entry_last(void)
+{
+	return Last_entry_string;
+}
+
+static void insert_history_buffer(GtkWidget *view, gchar *entry)
+{
+	GtkClipboard	*clipboard;
+	GList		*list;
+	guint		len;
+
+	if (!entry)
+		return;
+
+	/* to system clipboard */
+	clipboard = gtk_widget_get_clipboard(view, GDK_SELECTION_CLIPBOARD);
+	gtk_clipboard_set_text(clipboard, entry, -1);
+
+	for (list = combolist; list; list = g_list_next(list)) {
+		if (strcmp(entry, (gchar *)list->data) == 0)
+			return;
+	}
+
+	combolist = g_list_insert(combolist, entry, 0);
+	len = g_list_length(combolist);
+	if (len > COMBO_LIST_LIMIT) {
+		g_free(g_list_nth_data(combolist, len - 1));
+		combolist = g_list_delete_link(combolist,
+					g_list_nth(combolist, len - 1));
+	}
+}
+
 static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 {
 	GtkComboBox	*combobox;
@@ -462,6 +734,9 @@ static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 	if(!(*new_text) || strcmp(*new_text, "") == 0)
 		return 1;
 
+	g_free(Last_entry_string);
+	Last_entry_string = g_strdup(*new_text);
+
 	for (list = combolist; list; list = g_list_next(list)) {
 		if (strcmp(*new_text, (gchar *)list->data) == 0) {
 			exist_flag = TRUE;
@@ -470,9 +745,11 @@ static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 	}
 
 	if (!exist_flag) {
-		combolist = append_item(combobox, combolist, *new_text);
-		if (g_list_length(combolist) > COMBO_LIST_LIMIT) {
-			combolist = remove_item(combobox, combolist, 0);
+		guint len;
+		combolist = insert_item(combobox, combolist, *new_text, 0);
+		len = g_list_length(combolist);
+		if (len > COMBO_LIST_LIMIT) {
+			combolist = remove_item(combobox, combolist, len - 1);
 		}
 		DEBUG_PRINT("Append '%s'.\n", *new_text);
 	}
@@ -480,16 +757,20 @@ static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 	return exist_flag ? 1 : 0;
 }
 
-static gint append_dialog(transition_t *transition, 
+static gint append_dialog(transition_t *transition,
 				gchar *title, gchar **input)
 {
-	GtkWidget		*dialog;
+	GtkWidget		*dialog, *parent;
 	GtkWidget		*combo;
 	GList			*list;
 	gint			response, result = 1;
-  
+
+	parent = (transition->acl_detached &&
+		(int)transition->current_page == CCS_SCREEN_ACL_LIST) ?
+			transition->acl_window : transition->window;
+
 	dialog = gtk_dialog_new_with_buttons(title,
-			GTK_WINDOW(transition->window),
+			GTK_WINDOW(parent),
 			GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
@@ -505,12 +786,13 @@ static gint append_dialog(transition_t *transition,
 
 	gtk_container_add(
 		GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), combo);
-	gtk_widget_set_size_request(dialog, 600, -1);  
+	gtk_widget_set_size_request(dialog, 600, -1);
 	gtk_widget_show_all(dialog);
-  
+
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (response == GTK_RESPONSE_APPLY) {
-		result = combo_entry_activate(combo, input);
+		combo_entry_activate(combo, input);
+		result = 0;
 	}
 	gtk_widget_destroy(dialog);
 
@@ -519,8 +801,9 @@ static gint append_dialog(transition_t *transition,
 
 static void append_transition(GtkAction *action, transition_t *transition)
 {
-	gchar		*input;
+	gchar		*input = NULL;
 	gint		index, result = 1;
+	enum addentry_type	type = ADDENTRY_NON;
 	char		*err_buff = NULL;
 
 	switch((int)transition->current_page) {
@@ -530,6 +813,7 @@ static void append_transition(GtkAction *action, transition_t *transition)
 				 _("Add Domain"), &input);
 		if (!result)
 			result = add_domain(input, &err_buff);
+		type = ADDENTRY_DOMAIN_LIST;
 		break;
 	case CCS_SCREEN_ACL_LIST :
 		DEBUG_PRINT("append acl\n");
@@ -540,6 +824,7 @@ static void append_transition(GtkAction *action, transition_t *transition)
 				result = add_acl_list(transition->dp,
 						index, input, &err_buff);
 		}
+		type = ADDENTRY_ACL_LIST;
 		break;
 	case CCS_SCREEN_EXCEPTION_LIST :
 		DEBUG_PRINT("append exception\n");
@@ -547,23 +832,29 @@ static void append_transition(GtkAction *action, transition_t *transition)
 				 _("Add Exception"), &input);
 		if (!result)
 			result = add_exception_policy(input, &err_buff);
+		type = ADDENTRY_EXCEPTION_LIST;
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
 		DEBUG_PRINT("append profile\n");
 		result = append_dialog(transition,
-				 _("Add Profile"), &input);
+				 _("Add Profile (0 - 255)"), &input);
 		if (!result)
 			result = add_profile(input, &err_buff);
+		type = ADDENTRY_PROFILE_LIST;
 		break;
 	default :
 		DEBUG_PRINT("append ???\n");
 		break;
 	}
 
-	if (result && err_buff) {
-		g_warning("%s", err_buff);
-		free(err_buff);
+	if (result) {
+		if(err_buff) {
+			g_warning("%s", err_buff);
+			free(err_buff);
+		}
+		transition->addentry = ADDENTRY_NON;
 	} else {
+		transition->addentry = type;
 		refresh_transition(NULL, transition);
 	}
 }
@@ -670,7 +961,7 @@ static void set_domain(transition_t *transition)
 	GtkWidget		*dialog;
 	GtkWidget		*listview;
 	gint			count, response;
-  
+
 	if (transition->task_flag)
 		domain_selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(transition->tsk.treeview));
@@ -678,7 +969,7 @@ static void set_domain(transition_t *transition)
 		domain_selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(transition->treeview));
 
-	if (!domain_selection || !(count = 
+	if (!domain_selection || !(count =
 	    gtk_tree_selection_count_selected_rows(domain_selection)))
 		return;
 
@@ -691,11 +982,13 @@ static void set_domain(transition_t *transition)
 
 	listview = create_list_profile();
 	add_list_profile(listview, &(transition->prf));
+	view_cursor_set(listview, NULL, NULL);
 	gtk_container_add(
 		GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), listview);
-	gtk_widget_set_size_request(dialog, 400, 300);  
+	gtk_widget_set_size_request(dialog, 400, 300);
+	gtk_widget_set_name(dialog, "GpetProfileSelectDialog");	// .gpetrc
 	gtk_widget_show_all(dialog);
-  
+
 retry_profile:
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (response == GTK_RESPONSE_APPLY) {
@@ -704,7 +997,7 @@ retry_profile:
 					domain_selection, listview))
 			goto retry_profile;
 	} else if (response == GTK_RESPONSE_CANCEL) {
-		DEBUG_PRINT("Cancel button was pressed.\n");    
+		DEBUG_PRINT("Cancel button was pressed.\n");
 	} else {
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
@@ -719,8 +1012,8 @@ static void edit_profile(transition_t *transition)
 	GtkWidget		*entry;
 	gchar			*profile, *label_str, *ptr;
 	gint			index, response;
-  
-	if ((index = select_profile_line(&(transition->prf))) < 0)
+
+	if ((index = select_list_line(&(transition->prf))) < 0)
 		return;
 
 	entry = gtk_entry_new();
@@ -757,9 +1050,9 @@ static void edit_profile(transition_t *transition)
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 
-	gtk_widget_set_size_request(dialog, 600, -1);  
+	gtk_widget_set_size_request(dialog, 600, -1);
 	gtk_widget_show_all(dialog);
-  
+
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (response == GTK_RESPONSE_APPLY) {
 		const gchar	*input;
@@ -838,17 +1131,19 @@ static void show_about_dialog(void)
 //	gtk_about_dialog_set_translator_credits(about, translators);
 	gtk_about_dialog_set_version(about, VERSION);
 	gtk_about_dialog_set_copyright(about,
-				"Copyright(C) 2010 TOMOYO Linux Project");
+				"Copyright(C) 2010,2011 TOMOYO Linux Project");
 	gtk_about_dialog_set_comments(about,
 				"Gui Policy Editor for TOMOYO Linux 1.8"
+				" or AKARI 1.0"
 				"\n(based on ccs-editpolicy:ccstools)");
-	gtk_about_dialog_set_website(about, "http://gpet.sourceforge.jp/");
+	gtk_about_dialog_set_website(about, "http://sourceforge.jp/projects/gpet/");
 //	gtk_about_dialog_set_website_label(about, "http://tomoyo.sourceforge.jp/");
 
 	pixbuf = get_png_file();
-	gtk_about_dialog_set_logo(about, pixbuf);
-	g_object_unref(pixbuf);
-
+	if (pixbuf) {
+		gtk_about_dialog_set_logo(about, pixbuf);
+		g_object_unref(pixbuf);
+	}
 	gtk_container_set_border_width(GTK_CONTAINER(dialog), 5);
 
 	gtk_dialog_run(GTK_DIALOG(about));

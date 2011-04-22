@@ -35,6 +35,7 @@
 #define DIRECTORY		"/apps/gpet"
 #define WINDOW_POSITION	DIRECTORY"/window_position"
 #define WINDOW_SIZE		DIRECTORY"/window_size"
+#define ACL_WINDOW_SIZE	DIRECTORY"/acl_window_size"
 #define PANED_POSITION	DIRECTORY"/paned_position"
 
 void read_config(transition_t *tran)
@@ -46,6 +47,7 @@ void read_config(transition_t *tran)
 	gint		paned_position;
 
 	gtk_widget_set_size_request(tran->window, 640, 480);
+	gtk_widget_set_size_request(tran->acl_window, 200, 200);
 
 	client = gconf_client_get_default();
 	if (!gconf_client_dir_exists(client, DIRECTORY, &err)) {
@@ -61,6 +63,12 @@ void read_config(transition_t *tran)
 	if (gconf_client_get_pair(client, WINDOW_SIZE,
 			GCONF_VALUE_INT, GCONF_VALUE_INT, &w, &h, &err))
 		gtk_window_set_default_size(GTK_WINDOW(tran->window), w, h);
+	else
+		PRINT_WARN(err);
+
+	if (gconf_client_get_pair(client, ACL_WINDOW_SIZE,
+			GCONF_VALUE_INT, GCONF_VALUE_INT, &w, &h, &err))
+		gtk_window_set_default_size(GTK_WINDOW(tran->acl_window), w, h);
 	else
 		PRINT_WARN(err);
 
@@ -106,8 +114,14 @@ void write_config(transition_t *tran)
 		PRINT_WARN(err);
 	}
 
+	gtk_window_get_size(GTK_WINDOW(tran->acl_window), &w, &h);
+	if (!gconf_client_set_pair(client, ACL_WINDOW_SIZE,
+			GCONF_VALUE_INT, GCONF_VALUE_INT, &w, &h, &err)) {
+		PRINT_WARN(err);
+	}
+
 	paned = g_object_get_data(G_OBJECT(tran->window), "pane");
-	if (paned) {
+	if (!tran->acl_detached && paned) {
 		paned_position = gtk_paned_get_position(paned);
 		if (!gconf_client_set_int(client, PANED_POSITION,
 						paned_position, &err)) {

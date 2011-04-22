@@ -3,9 +3,9 @@
  *
  * TOMOYO Linux's utilities.
  *
- * Copyright (C) 2005-2010  NTT DATA CORPORATION
+ * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.0   2010/11/11
+ * Version: 1.8.1   2011/04/01
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -25,6 +25,11 @@
 
 #ifdef COLOR_ON
 
+/**
+ * ccs_editpolicy_color_init - Initialize line coloring table.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_color_init(void)
 {
 	static struct ccs_color_env_t {
@@ -53,14 +58,14 @@ void ccs_editpolicy_color_init(void)
 		  COLOR_GREEN,      "MANAGER_HEAD" },
 		{ CCS_MANAGER_CURSOR,   COLOR_WHITE,
 		  COLOR_GREEN,      "MANAGER_CURSOR" },
-		{ CCS_MEMORY_HEAD,      COLOR_BLACK,
-		  COLOR_YELLOW,     "MEMORY_HEAD" },
-		{ CCS_MEMORY_CURSOR,    COLOR_BLACK,
-		  COLOR_YELLOW,     "MEMORY_CURSOR" },
+		{ CCS_STAT_HEAD,        COLOR_BLACK,
+		  COLOR_YELLOW,     "STAT_HEAD" },
+		{ CCS_STAT_CURSOR,      COLOR_BLACK,
+		  COLOR_YELLOW,     "STAT_CURSOR" },
 		{ CCS_NORMAL,           COLOR_WHITE,
 		  COLOR_BLACK,      NULL }
 	};
-	FILE *fp = fopen(CCS_CONFIG_FILE, "r");
+	FILE *fp = fopen(CCS_EDITPOLICY_CONF, "r");
 	int i;
 	if (!fp)
 		goto use_default;
@@ -70,7 +75,7 @@ void ccs_editpolicy_color_init(void)
 		char *cp;
 		if (!line)
 			break;
-		if (!ccs_str_starts(line, "editpolicy.line_color "))
+		if (!ccs_str_starts(line, "line_color "))
 			continue;
 		cp = strchr(line, '=');
 		if (!cp)
@@ -105,8 +110,17 @@ use_default:
 		init_pair(colorp->tag, colorp->fore, colorp->back);
 	}
 	init_pair(CCS_DISP_ERR, COLOR_RED, COLOR_BLACK); /* error message */
+	for (i = 0; i < CCS_MAXSCREEN; i++)
+		ccs_screen[i].saved_color_current = -1;
 }
 
+/**
+ * ccs_editpolicy_color_save - Save or load current color.
+ *
+ * @flg: True if save request, false otherwise.
+ *
+ * Returns nothing.
+ */
 static void ccs_editpolicy_color_save(const _Bool flg)
 {
 	static attr_t save_color = CCS_NORMAL;
@@ -116,6 +130,14 @@ static void ccs_editpolicy_color_save(const _Bool flg)
 		attrset(save_color);
 }
 
+/**
+ * ccs_editpolicy_color_change - Change current color.
+ *
+ * @attr: Coloe to use.
+ * @flg:  True if turn on, false otherwise.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_color_change(const attr_t attr, const _Bool flg)
 {
 	if (flg)
@@ -124,6 +146,14 @@ void ccs_editpolicy_color_change(const attr_t attr, const _Bool flg)
 		attroff(COLOR_PAIR(attr));
 }
 
+/**
+ * ccs_editpolicy_attr_change - Change current attribute.
+ *
+ * @attr: Coloe to use.
+ * @flg:  True if turn on, false otherwise.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_attr_change(const attr_t attr, const _Bool flg)
 {
 	if (flg)
@@ -132,19 +162,34 @@ void ccs_editpolicy_attr_change(const attr_t attr, const _Bool flg)
 		attroff(attr);
 }
 
+/**
+ * ccs_editpolicy_sttr_save - Save current color.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_sttr_save(void)
 {
 	ccs_editpolicy_color_save(true);
 }
 
+/**
+ * ccs_editpolicy_sttr_restore - Load current color.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_sttr_restore(void)
 {
 	ccs_editpolicy_color_save(false);
 }
 
-int ccs_editpolicy_color_head(const int screen)
+/**
+ * ccseditpolicy_color_head - Get color to use for header line.
+ *
+ * Returns one of values in "enum ccs_color_pair".
+ */
+enum ccs_color_pair ccs_editpolicy_color_head(void)
 {
-	switch (screen) {
+	switch (ccs_current_screen) {
 	case CCS_SCREEN_DOMAIN_LIST:
 		return CCS_DOMAIN_HEAD;
 	case CCS_SCREEN_EXCEPTION_LIST:
@@ -153,16 +198,21 @@ int ccs_editpolicy_color_head(const int screen)
 		return CCS_PROFILE_HEAD;
 	case CCS_SCREEN_MANAGER_LIST:
 		return CCS_MANAGER_HEAD;
-	case CCS_SCREEN_MEMINFO_LIST:
-		return CCS_MEMORY_HEAD;
+	case CCS_SCREEN_STAT_LIST:
+		return CCS_STAT_HEAD;
 	default:
 		return CCS_ACL_HEAD;
 	}
 }
 
-int ccs_editpolicy_color_cursor(const int screen)
+/**
+ * ccs_editpolicy_color_cursor - Get color to use for cursor line.
+ *
+ * Returns one of values in "enum ccs_color_pair".
+ */
+static inline enum ccs_color_pair ccs_editpolicy_color_cursor(void)
 {
-	switch (screen) {
+	switch (ccs_current_screen) {
 	case CCS_SCREEN_DOMAIN_LIST:
 		return CCS_DOMAIN_CURSOR;
 	case CCS_SCREEN_EXCEPTION_LIST:
@@ -171,20 +221,22 @@ int ccs_editpolicy_color_cursor(const int screen)
 		return CCS_PROFILE_CURSOR;
 	case CCS_SCREEN_MANAGER_LIST:
 		return CCS_MANAGER_CURSOR;
-	case CCS_SCREEN_MEMINFO_LIST:
-		return CCS_MEMORY_CURSOR;
+	case CCS_SCREEN_STAT_LIST:
+		return CCS_STAT_CURSOR;
 	default:
 		return CCS_ACL_CURSOR;
 	}
 }
 
-void ccs_editpolicy_line_draw(const int screen)
+/**
+ * ccs_editpolicy_line_draw - Update colored line.
+ *
+ * Returns nothing.
+ */
+void ccs_editpolicy_line_draw(void)
 {
-	static int ccs_before_current[CCS_MAXSCREEN] = { -1, -1, -1, -1,
-							 -1, -1, -1 };
-	static int ccs_before_y[CCS_MAXSCREEN]       = { -1, -1, -1, -1,
-							 -1, -1, -1 };
-	int current = ccs_editpolicy_get_current();
+	struct ccs_screen *ptr = &ccs_screen[ccs_current_screen];
+	const int current = ccs_editpolicy_get_current();
 	int y;
 	int x;
 
@@ -192,44 +244,89 @@ void ccs_editpolicy_line_draw(const int screen)
 		return;
 
 	getyx(stdscr, y, x);
-	if (-1 < ccs_before_current[screen] &&
-	    current != ccs_before_current[screen]){
-		move(CCS_HEADER_LINES + ccs_before_y[screen], 0);
+	if (-1 < ptr->saved_color_current &&
+	    current != ptr->saved_color_current) {
+		move(CCS_HEADER_LINES + ptr->saved_color_y, 0);
 		chgat(-1, A_NORMAL, CCS_NORMAL, NULL);
 	}
 
 	move(y, x);
-	chgat(-1, A_NORMAL, ccs_editpolicy_color_cursor(screen), NULL);
+	chgat(-1, A_NORMAL, ccs_editpolicy_color_cursor(), NULL);
 	touchwin(stdscr);
 
-	ccs_before_current[screen] = current;
-	ccs_before_y[screen] = ccs_current_y[screen];
+	ptr->saved_color_current = current;
+	ptr->saved_color_y = ptr->y;
 }
 
 #else
 
+/**
+ * ccs_editpolicy_color_init - Initialize line coloring table.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_color_init(void)
 {
 }
+
+/**
+ * ccs_editpolicy_color_change - Change current color.
+ *
+ * @attr: Coloe to use.
+ * @flg:  True if turn on, false otherwise.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_color_change(const attr_t attr, const _Bool flg)
 {
 }
+
+/**
+ * ccs_editpolicy_attr_change - Change current attribute.
+ *
+ * @attr: Coloe to use.
+ * @flg:  True if turn on, false otherwise.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_attr_change(const attr_t attr, const _Bool flg)
 {
 }
+
+/**
+ * ccs_editpolicy_sttr_save - Save current color.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_sttr_save(void)
 {
 }
+
+/**
+ * ccs_editpolicy_sttr_restore - Load current color.
+ *
+ * Returns nothing.
+ */
 void ccs_editpolicy_sttr_restore(void)
 {
 }
-int ccs_editpolicy_color_head(const int screen)
+
+/**
+ * ccseditpolicy_color_head - Get color to use for header line.
+ *
+ * Returns one of values in "enum ccs_color_pair".
+ */
+enum ccs_color_pair ccs_editpolicy_color_head(void)
 {
+	return CCS_NORMAL;
 }
-int ccs_editpolicy_color_cursor(const int screen)
-{
-}
-void ccs_editpolicy_line_draw(const int screen)
+
+/**
+ * ccs_editpolicy_line_draw - Update colored line.
+ *
+ * Returns nothing.
+ */
+void ccs_editpolicy_line_draw(void)
 {
 }
 

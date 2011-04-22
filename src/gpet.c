@@ -3,18 +3,18 @@
  * Gui Policy Editor for TOMOYO Linux
  *
  * gpet.c
- * Copyright (C) Yoshihiro Kusuno 2010 <yocto@users.sourceforge.jp>
- * 
+ * Copyright (C) Yoshihiro Kusuno 2010,2011 <yocto@users.sourceforge.jp>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
@@ -38,10 +38,10 @@
 /*---------------------------------------------------------------------------*/
 enum tree_column_pos {
 	COLUMN_INDEX,			// data index (invisible)
-	COLUMN_NUMBER,		// n
+	COLUMN_NUMBER,			// n
 	COLUMN_COLON,			// :
-	COLUMN_PROFILE,		// profile
-	COLUMN_KEEPER_DOMAIN,	// #
+	COLUMN_PROFILE,			// profile
+	COLUMN_KEEPER_DOMAIN,		// #
 	COLUMN_INITIALIZER_TARGET,	// *
 	COLUMN_DOMAIN_UNREACHABLE,	// !
 	COLUMN_DOMAIN_NAME,		// domain name
@@ -73,8 +73,8 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	number = dp->list[*index].number;
 	if (number >= 0) {
 		str_num = g_strdup_printf("%4d", number);
-		str_prof = dp->list[*index].profile_assigned ? 
-			g_strdup_printf("%3u", dp->list[*index].profile) : 
+		str_prof = dp->list[*index].profile_assigned ?
+			g_strdup_printf("%3u", dp->list[*index].profile) :
 			g_strdup("???");
 	} else {
 		str_num = g_strdup("");
@@ -101,11 +101,11 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 				transition_control->program->name : "any",
 			transition_control->domainname ?
 				transition_control->domainname->name : "any");
-		color = 
+		color =
 		transition_control->type == CCS_TRANSITION_CONTROL_KEEP ?
 		"green" : "cyan";
 	} else if (dp->list[*index].is_dis) {	/* initialize_domain */
-		is_dis = g_strdup_printf(CCS_ROOT_NAME "%s", 
+		is_dis = g_strdup_printf(CCS_ROOT_NAME "%s",
 				strrchr(ccs_domain_name(dp, *index), ' '));
 		redirect_index = ccs_find_domain(dp, is_dis, false, false);
 		g_free(is_dis);
@@ -157,7 +157,7 @@ void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp)
 	GtkTreeStore	*store;
 	GtkTreeIter	*iter = NULL;
 	int		index = 0, nest = -1;
-	
+
 	store = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 	gtk_tree_store_clear(store);
 	add_tree_store(store, iter, dp, &index, nest);
@@ -263,8 +263,8 @@ static GtkWidget *create_tree_model(void)
 enum list_column_pos {
 	LIST_NUMBER,		// n
 	LIST_COLON,		// :
-	LIST_ALIAS,		// 
-	LIST_OPERAND,		// 
+	LIST_ALIAS,		//
+	LIST_OPERAND,		//
 	N_COLUMNS_LIST
 };
 
@@ -311,6 +311,27 @@ void add_list_data(generic_list_t *generic, gboolean alias_flag)
 	}
 }
 
+static void disable_header_focus(GtkTreeViewColumn *column, const gchar *str)
+{
+	GtkWidget		*label, *dummy;
+	GtkButton		*button = GTK_BUTTON(gtk_button_new());
+
+	label = gtk_label_new(str);
+	gtk_tree_view_column_set_widget(column, label);
+	gtk_widget_show(label);
+	dummy = gtk_tree_view_column_get_widget(column);
+	while (dummy)	 {
+//		g_print("<%s:%p> ", g_type_name(G_OBJECT_TYPE(dummy)), dummy);
+
+		g_object_set(G_OBJECT(dummy), "can-focus", FALSE, NULL);
+//		gtk_widget_set_can_focus(dummy, FALSE);	// 2.18
+		if (G_OBJECT_TYPE(dummy) == G_OBJECT_TYPE(button))
+			break;
+		dummy = gtk_widget_get_parent(dummy);
+	}
+//	g_print("\n");
+}
+
 static GtkWidget *create_list_model(gboolean alias_flag)
 {
 	GtkWidget		*treeview;
@@ -331,11 +352,13 @@ static GtkWidget *create_list_model(gboolean alias_flag)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 	gtk_tree_view_column_set_sort_column_id(column, LIST_NUMBER);
 //	gtk_tree_view_column_set_alignment(column, 1.0);
+	disable_header_focus(column, "No.");
 
 	renderer = gtk_cell_renderer_text_new();
 	column = gtk_tree_view_column_new_with_attributes(" ", renderer,
 					      "text", LIST_COLON, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	disable_header_focus(column, " ");
 
 	if (alias_flag) {
 		renderer = gtk_cell_renderer_text_new();
@@ -343,6 +366,7 @@ static GtkWidget *create_list_model(gboolean alias_flag)
 			"directive", renderer, "text", LIST_ALIAS, NULL);
 		gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 		gtk_tree_view_column_set_sort_column_id(column, LIST_ALIAS);
+		disable_header_focus(column, "directive");
 	}
 
 	renderer = gtk_cell_renderer_text_new();
@@ -350,9 +374,10 @@ static GtkWidget *create_list_model(gboolean alias_flag)
 					      "text", LIST_OPERAND, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 	gtk_tree_view_column_set_sort_column_id(column, LIST_OPERAND);
+	disable_header_focus(column, "operand");
 
 	// ヘッダ表示
-	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(treeview), TRUE);
+//	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(treeview), TRUE);
 
 	return treeview;
 }
@@ -360,8 +385,8 @@ static GtkWidget *create_list_model(gboolean alias_flag)
 gint get_current_domain_index(transition_t *transition)
 {
 	GtkTreeSelection	*selection;
-	GtkTreeIter		iter;
 	GtkTreeModel		*model;
+	GtkTreeIter		iter;
 	GList			*list;
 	gint			index = -1;
 
@@ -369,19 +394,152 @@ gint get_current_domain_index(transition_t *transition)
 				GTK_TREE_VIEW(transition->treeview));
 	if (selection &&
 	    gtk_tree_selection_count_selected_rows(selection)) {
-		list = gtk_tree_selection_get_selected_rows(
-							selection, NULL);
+		list = gtk_tree_selection_get_selected_rows(selection, NULL);
 		model = gtk_tree_view_get_model(
 				GTK_TREE_VIEW(transition->treeview));
-		gtk_tree_model_get_iter(model, &iter,
-						g_list_first(list)->data);
-		gtk_tree_model_get(model, &iter,
-						COLUMN_INDEX, &index, -1);
+		gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
+		gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
 		g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
 		g_list_free(list);
 	}
 	DEBUG_PRINT("select Domain index[%d]\n", index);
 	return index;
+}
+
+gchar *get_alias_and_operand(GtkWidget *view)
+{
+	GtkTreeSelection	*selection;
+	GtkTreeIter		iter;
+	GtkTreeModel		*model;
+	GList			*list;
+	gchar			*alias = NULL, *operand = NULL,
+				*str_buff = NULL;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+	if (selection &&
+	    gtk_tree_selection_count_selected_rows(selection)) {
+		list = gtk_tree_selection_get_selected_rows(selection, NULL);
+		model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
+		gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
+		gtk_tree_model_get(model, &iter,
+				LIST_ALIAS, &alias, LIST_OPERAND, &operand, -1);
+		str_buff = g_strdup_printf("%s %s", alias, operand);
+	}
+
+	return str_buff;
+}
+/*---------------------------------------------------------------------------*/
+static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
+				GtkTreeIter *iter, transition_t *transition)
+{
+	GtkWidget		*view = NULL;
+	GtkTreeSelection	*selection;
+	const char		*domain;
+	gint			index;
+	gchar			*alias = NULL, *operand = NULL, *str_buff = NULL;
+	gchar			*entry;
+	int			cmp = -1;
+
+
+	entry = get_combo_entry_last();
+
+	switch((int)transition->addentry) {
+	case ADDENTRY_DOMAIN_LIST :
+		view = transition->treeview;
+		gtk_tree_model_get(model, iter, COLUMN_INDEX, &index, -1);
+		domain = ccs_domain_name(transition->dp, index);
+		cmp = strcmp(entry, domain);
+		break;
+	case ADDENTRY_ACL_LIST :
+		view = transition->acl.listview;
+		gtk_tree_model_get(model, iter,
+				LIST_ALIAS, &alias, LIST_OPERAND, &operand, -1);
+		str_buff = g_strdup_printf("%s %s", alias, operand);	// TODO
+		cmp = strcmp(entry, str_buff);
+//g_print("%2d[%s][%s]\n", cmp, entry, str_buff);
+		break;
+	case ADDENTRY_EXCEPTION_LIST :
+		view = transition->exp.listview;
+		gtk_tree_model_get(model, iter,
+				LIST_ALIAS, &alias, LIST_OPERAND, &operand, -1);
+		str_buff = g_strdup_printf("%s %s", alias, operand);	// TODO
+		cmp = strcmp(entry, str_buff);
+		break;
+	case ADDENTRY_PROFILE_LIST :
+		view = transition->prf.listview;
+		gtk_tree_model_get(model, iter, LIST_NUMBER, &str_buff, -1);
+		cmp = atoi(entry) - transition->prf.list[atoi(str_buff)].directive;
+//g_print("entry[%s] [%s:%d]\n", entry, str_buff, transition->prf.list[atoi(str_buff)].directive);
+		break;
+	}
+	g_free(alias);
+	g_free(operand);
+	g_free(str_buff);
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+
+	if (cmp) {
+		gtk_tree_selection_unselect_path(selection, path);
+		return FALSE;
+	} else {
+		gtk_tree_selection_select_path(selection, path);
+#if 0
+	{// debug
+		gchar *path_str = gtk_tree_path_to_string(path);
+		g_print("Put Path[%s]\n", path_str);
+		g_free(path_str);
+	}
+#endif
+		return TRUE;
+	}
+}
+
+void set_position_addentry(transition_t *transition, GtkTreePath **path)
+{
+	GtkWidget		*view = NULL;
+	GtkTreeModel		*model;
+	GtkTreeSelection	*selection;
+	GList			*list;
+
+
+	switch((int)transition->addentry) {
+	case ADDENTRY_NON :
+		return;
+		break;
+	case ADDENTRY_DOMAIN_LIST :
+		view = transition->treeview;
+		break;
+	case ADDENTRY_ACL_LIST :
+		view = transition->acl.listview;
+		break;
+	case ADDENTRY_EXCEPTION_LIST :
+		view = transition->exp.listview;
+		break;
+	case ADDENTRY_PROFILE_LIST :
+		view = transition->prf.listview;
+		break;
+	}
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
+	gtk_tree_model_foreach(model,
+		(GtkTreeModelForeachFunc)move_pos_list, transition);
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+	list = gtk_tree_selection_get_selected_rows(selection, NULL);
+	if (list) {
+		gtk_tree_path_free(*path);
+		(*path) = gtk_tree_path_copy(g_list_first(list)->data);
+		g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+		g_list_free(list);
+	}
+	transition->addentry = ADDENTRY_NON;
+
+#if 0
+	{// debug
+		gchar *path_str = gtk_tree_path_to_string(*path);
+		g_print("Get Path[%s]\n", path_str);
+		g_free(path_str);
+	}
+#endif
 }
 /*---------------------------------------------------------------------------*/
 static void cb_selection(GtkTreeSelection *selection,
@@ -395,6 +553,7 @@ static void cb_selection(GtkTreeSelection *selection,
 	GtkTreePath		*path = NULL;
 	GtkTreeViewColumn	*column = NULL;
 
+	DEBUG_PRINT("In  **************************** \n");
 	select_count = gtk_tree_selection_count_selected_rows(selection);
 	DEBUG_PRINT("select count[%d]\n", select_count);
 	if (0 == select_count)
@@ -418,14 +577,67 @@ static void cb_selection(GtkTreeSelection *selection,
 		&(transition->acl.list), &(transition->acl.count));
 	add_list_data(&(transition->acl), TRUE);
 
-	view_cursor_set(transition->acl.listview, path, column);
-
 	if (transition->acl.count) {
+		set_position_addentry(transition, &path);
+		DEBUG_PRINT("ACL count<%d>\n", transition->acl.count);
+		DEBUG_PRINT("ACL ");
+		view_cursor_set(transition->acl.listview, path, column);
+//		gtk_widget_grab_focus(transition->acl.listview);
 		disp_statusbar(transition, CCS_SCREEN_ACL_LIST);
 	} else {	/* delete_domain or initializer_source */
 		disp_statusbar(transition, CCS_MAXSCREEN);
 	}
+	DEBUG_PRINT("Out **************************** \n");
 }
+#if 0
+static void cb_selection (GtkTreeView		*treeview,
+				transition_t		*transition)
+{
+	GtkTreeSelection	*selection;
+	GtkTreeIter	iter;
+	gint		select_count;
+	GtkTreeModel	*model;
+	GList		*list;
+	gint		index;
+	GtkTreePath		*path = NULL;
+	GtkTreeViewColumn	*column = NULL;
+
+	DEBUG_PRINT("In  **************************** \n");
+	selection = gtk_tree_view_get_selection(treeview);
+	select_count = gtk_tree_selection_count_selected_rows(selection);
+	DEBUG_PRINT("select count[%d]\n", select_count);
+	if (0 == select_count)
+		return;
+
+	model = gtk_tree_view_get_model(
+				GTK_TREE_VIEW(transition->treeview));
+	list = gtk_tree_selection_get_selected_rows(selection, NULL);
+	gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
+	g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+	g_list_free(list);
+	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
+	DEBUG_PRINT("--- index [%4d] ---\n", index);
+	gtk_entry_set_text(GTK_ENTRY(transition->domainbar),
+				ccs_domain_name(transition->dp, index));
+
+	gtk_tree_view_get_cursor(GTK_TREE_VIEW(
+			transition->acl.listview), &path, &column);
+
+	get_acl_list(transition->dp, index,
+		&(transition->acl.list), &(transition->acl.count));
+	add_list_data(&(transition->acl), TRUE);
+
+	if (transition->acl.count) {
+		DEBUG_PRINT("ACL count<%d>\n", transition->acl.count);
+		DEBUG_PRINT("ACL ");
+		view_cursor_set(transition->acl.listview, path, column);
+		disp_statusbar(transition, CCS_SCREEN_ACL_LIST);
+	} else {	/* delete_domain or initializer_source */
+		disp_statusbar(transition, CCS_MAXSCREEN);
+	}
+	DEBUG_PRINT("Out **************************** \n");
+}
+#endif
 /*---------------------------------------------------------------------------*/
 struct FindIsDis_t {
 	gint		redirect_index;
@@ -455,6 +667,7 @@ static void cb_initialize_domain(GtkTreeView *treeview, GtkTreePath *treepath,
 	gboolean	ret;
 	struct FindIsDis_t	data;
 
+	DEBUG_PRINT("In  **************************** \n");
 	model = gtk_tree_view_get_model(treeview);
 	ret = gtk_tree_model_get_iter(model, &iter, treepath);
 	if (ret)
@@ -469,53 +682,59 @@ static void cb_initialize_domain(GtkTreeView *treeview, GtkTreePath *treepath,
 	     	(GtkTreeModelForeachFunc)find_is_dis, &data);
 
 	if (data.path) {
+	  {
+		gchar *path_str = gtk_tree_path_to_string(data.path);
+		DEBUG_PRINT("TreePath[%s]\n", path_str);
+		g_free(path_str);
+	  }
+		GtkTreeViewColumn	*column = NULL;
 		gtk_tree_view_expand_to_path(GTK_TREE_VIEW(treeview), data.path);
 		gtk_tree_selection_select_iter(
 			gtk_tree_view_get_selection(
 			GTK_TREE_VIEW(treeview)), &data.iter);
-		gtk_tree_view_set_cursor(GTK_TREE_VIEW(treeview),
-			       			data.path, NULL, FALSE);
-		gtk_tree_path_free(data.path);
+		DEBUG_PRINT("Domain ");
+		view_cursor_set(GTK_WIDGET(treeview), data.path, column);
 	}
+	DEBUG_PRINT("Out **************************** \n");
 }
 /*---------------------------------------------------------------------------*/
 void set_sensitive(GtkActionGroup *actions, int task_flag,
 				enum ccs_screen_type current_page)
 {
-	gboolean	sens_edt, sens_add, sens_del, sens_tsk;
+	gboolean	sens_edt, sens_add, sens_del, sens_tsk,
+			sens_dch, sens_cpy, sens_opt;
 
-	sens_edt = sens_add = sens_del = sens_tsk = FALSE;
+	sens_edt = sens_add = sens_del = sens_tsk =
+			sens_dch = sens_cpy = sens_opt = FALSE;
 
 	switch((int)current_page) {
 	case CCS_SCREEN_DOMAIN_LIST :
 	case CCS_MAXSCREEN :
 		sens_edt = TRUE;
 		sens_tsk = TRUE;
-		if (task_flag) {
-			sens_add = FALSE;
-			sens_del = FALSE;
-		} else {
+		sens_dch = TRUE;
+		if (!task_flag) {
 			sens_add = TRUE;
 			sens_del = TRUE;
+			sens_cpy = TRUE;
 		}
 		break;
 	case CCS_SCREEN_ACL_LIST :
-		sens_edt = FALSE;
 		sens_add = TRUE;
 		sens_del = TRUE;
 		sens_tsk = TRUE;
+		sens_dch = TRUE;
+		sens_cpy = TRUE;
+		sens_opt = TRUE;
 		break;
 	case CCS_SCREEN_EXCEPTION_LIST :
-		sens_edt = FALSE;
 		sens_add = TRUE;
 		sens_del = TRUE;
-		sens_tsk = FALSE;
+		sens_cpy = TRUE;
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
 		sens_edt = TRUE;
 		sens_add = TRUE;
-		sens_del = FALSE;
-		sens_tsk = FALSE;
 		break;
 	}
 
@@ -526,6 +745,14 @@ void set_sensitive(GtkActionGroup *actions, int task_flag,
 	gtk_action_set_sensitive(gtk_action_group_get_action(
 					actions, "Delete"), sens_del);
 	gtk_action_set_sensitive(gtk_action_group_get_action(
+					actions, "ACL"), sens_dch);
+	gtk_action_set_sensitive(gtk_action_group_get_action(
+					actions, "Copy"), sens_cpy);
+	gtk_action_set_sensitive(gtk_action_group_get_action(
+				actions, "OptimizationSupport"), sens_opt);
+
+	if (!is_offline())
+		gtk_action_set_sensitive(gtk_action_group_get_action(
 					actions, "Process"), sens_tsk);
 }
 
@@ -536,7 +763,7 @@ static gint popup_menu(transition_t *transition, guint button)
 		/* get menu.c create_menu()*/
 		popup = g_object_get_data(
 				G_OBJECT(transition->window), "popup");
-		
+
 		gtk_menu_popup(GTK_MENU(popup), NULL, NULL, NULL, NULL,
 					0, gtk_get_current_event_time());
 		return TRUE;
@@ -557,7 +784,7 @@ static gboolean cb_select_domain(GtkTreeView *treeview,  GdkEventButton *event,
 		/* get menu.c create_menu()*/
 		popup = g_object_get_data(
 				G_OBJECT(transition->window), "popup");
-		
+
 		gtk_menu_popup(GTK_MENU(popup), NULL, NULL, NULL, NULL,
 					0, gtk_get_current_event_time());
 		return TRUE;
@@ -623,8 +850,11 @@ void view_setting(GtkWidget *treeview, gint search_column)
 			(GtkTreeViewSearchEqualFunc)inc_search, NULL, NULL);
 }
 
-static GtkContainer *create_domain_view(GtkWidget *box,
-		GtkWidget *treeview, void (*paned_pack)(), gboolean resize)
+/*---------------------------------------------------------------------------*/
+static GtkContainer *create_domain_view(GtkWidget *paned,
+		GtkWidget *treeview, void (*paned_pack)(),
+		gboolean resize,
+		GtkWidget *acl_window, gboolean *acl_detached)
 {
 	GtkWidget	*scrolledwin;
 	GtkContainer	*container;
@@ -634,11 +864,17 @@ static GtkContainer *create_domain_view(GtkWidget *box,
 				GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
 	gtk_scrolled_window_set_shadow_type(
 			GTK_SCROLLED_WINDOW(scrolledwin), GTK_SHADOW_IN);
-	paned_pack(GTK_PANED(box), scrolledwin, resize, TRUE);
+
+	paned_pack(GTK_PANED(paned), scrolledwin, resize, TRUE);
+
+	if (!resize) {
+		view_setting(treeview, LIST_OPERAND);
+	} else {
+		view_setting(treeview, COLUMN_DOMAIN_NAME);
+	}
+
 	container = GTK_CONTAINER(scrolledwin);
 	gtk_container_add(container, treeview);
-
-	view_setting(treeview, COLUMN_DOMAIN_NAME);
 
 	return container;
 }
@@ -743,7 +979,7 @@ gint set_domain_profile(transition_t *transition,
 
 	profile_str = g_strdup_printf("%u", profile);
 	result = set_profile(transition->dp, profile_str, &err_buff);
-//	g_free(profile_str);
+//	g_free(profile_str);	→ editpolicy.c
 	if (result) {
 		g_warning("%s", err_buff);
 		free(err_buff);
@@ -752,7 +988,31 @@ gint set_domain_profile(transition_t *transition,
 	return result;
 }
 /*---------------------------------------------------------------------------*/
-gint select_profile_line(generic_list_t *prf)
+gboolean disp_acl_line(GtkTreeModel *model, GtkTreePath *path,
+				GtkTreeIter *iter, generic_list_t *acl)
+{
+	GtkTreeSelection	*selection;
+	gchar			*str_num;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(acl->listview));
+
+	gtk_tree_model_get(model, iter, LIST_NUMBER, &str_num, -1);
+
+	if (acl->list[atoi(str_num)].selected) {
+#if 0
+gchar *str_path = gtk_tree_path_to_string(path);
+g_print("select[%d] path[%s]\n", atoi(str_num), str_path);
+g_free(str_path);
+#endif
+		gtk_tree_selection_select_path(selection, path);
+	} else {
+		gtk_tree_selection_unselect_path(selection, path);
+	}
+
+	return FALSE;
+}
+
+gint select_list_line(generic_list_t *gen)
 {
 	GtkTreeSelection	*selection;
 	GtkTreeIter		iter;
@@ -762,13 +1022,16 @@ gint select_profile_line(generic_list_t *prf)
 	gint			index = -1;
 
 	selection = gtk_tree_view_get_selection(
-					GTK_TREE_VIEW(prf->listview));
+					GTK_TREE_VIEW(gen->listview));
 	if (!selection ||
 	    !gtk_tree_selection_count_selected_rows(selection))
 		return index;
 
 	list = gtk_tree_selection_get_selected_rows(selection, NULL);
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(prf->listview));
+	if (!list)
+		return index;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(gen->listview));
 	gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
 	gtk_tree_model_get(model, &iter, LIST_NUMBER, &str_num, -1);
 	g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
@@ -863,31 +1126,120 @@ static void create_tabs(GtkWidget *notebook, GtkWidget *box, gchar *str)
 					box, label_box, menu_box);
 }
 
-static void disp_window_title(GtkWidget *window,
-					enum ccs_screen_type current_page)
+gchar *disp_window_title(enum ccs_screen_type current_page)
 {
-	char	*title;
+	char	str_ip[32];
+	gchar	*title = NULL;
+	const char *dir = get_policy_dir();
+	enum	mode_enum {e_off, e_net, e_on, e_end};
+	const gchar *mode[e_end] = {_("offline"), _("nework"), _("online")};
+
 
 	switch((int)current_page) {
 	case CCS_SCREEN_DOMAIN_LIST :
 	case CCS_SCREEN_ACL_LIST :
-	case CCS_MAXSCREEN :
-		title = is_offline() ?
-		 CCS_DISK_POLICY_DIR CCS_DISK_POLICY_DOMAIN_POLICY :
-					CCS_PROC_POLICY_DOMAIN_POLICY;
+		if (is_offline())
+			title = g_strdup_printf("%s - %s%s%s", mode[e_off], dir,
+			 CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_DOMAIN_POLICY);
+		else if (is_network())
+			title = g_strdup_printf("%s(%s) - %s", mode[e_net],
+					get_remote_ip(str_ip),
+					CCS_PROC_POLICY_DOMAIN_POLICY);
+		else
+			title = g_strdup_printf("%s - %s", mode[e_on],
+					CCS_PROC_POLICY_DOMAIN_POLICY);
 		break;
 	case CCS_SCREEN_EXCEPTION_LIST :
-		title = is_offline() ?
-		CCS_DISK_POLICY_DIR CCS_DISK_POLICY_EXCEPTION_POLICY :
-					CCS_PROC_POLICY_EXCEPTION_POLICY;
+		if (is_offline())
+			title = g_strdup_printf("%s - %s%s%s", mode[e_off], dir,
+			 CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_EXCEPTION_POLICY);
+		else if (is_network())
+			title = g_strdup_printf("%s(%s) - %s", mode[e_net],
+					get_remote_ip(str_ip),
+					CCS_PROC_POLICY_EXCEPTION_POLICY);
+		else
+			title = g_strdup_printf("%s - %s", mode[e_on],
+					CCS_PROC_POLICY_EXCEPTION_POLICY);
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
-		title = is_offline() ?
-		 CCS_DISK_POLICY_DIR CCS_DISK_POLICY_PROFILE :
-					CCS_PROC_POLICY_PROFILE;
+		if (is_offline())
+			title = g_strdup_printf("%s - %s%s%s", mode[e_off], dir,
+			 CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_PROFILE);
+		else if (is_network())
+			title = g_strdup_printf("%s(%s) - %s", mode[e_net],
+					get_remote_ip(str_ip),
+					CCS_PROC_POLICY_PROFILE);
+		else
+			title = g_strdup_printf("%s - %s", mode[e_on],
+					CCS_PROC_POLICY_PROFILE);
+		break;
+	case CCS_SCREEN_STAT_LIST :
+		if (is_network())
+			title = g_strdup_printf("%s: %s(%s) - %s",
+					_("Statistics"), mode[e_net],
+					get_remote_ip(str_ip),
+					CCS_PROC_POLICY_STAT);
+		else
+			title = g_strdup_printf("%s: %s - %s",
+					_("Statistics"), mode[e_on],
+					CCS_PROC_POLICY_STAT);
+		break;
+	case CCS_SCREEN_MANAGER_LIST :
+		if (is_offline())
+			title = g_strdup_printf("%s: %s - %s%s%s",
+				_("Manager Policy"), mode[e_off], dir,
+				CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_MANAGER);
+		else if (is_network())
+			title = g_strdup_printf("%s: %s(%s) - %s",
+				_("Manager Policy"), mode[e_net],
+				get_remote_ip(str_ip),
+				CCS_PROC_POLICY_MANAGER);
+		else
+			title = g_strdup_printf("%s: %s - %s",
+				_("Manager Policy"), mode[e_on],
+				CCS_PROC_POLICY_MANAGER);
+		break;
+	case CCS_MAXSCREEN :
+		if (is_offline())
+			title = g_strdup_printf("%s: %s - %s%s%s",
+				_("Domain Policy Editor"), mode[e_off], dir,
+			 CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_DOMAIN_POLICY);
+		else if (is_network())
+			title = g_strdup_printf("%s: %s(%s) - %s",
+					_("Domain Policy Editor"), mode[e_net],
+					get_remote_ip(str_ip),
+					CCS_PROC_POLICY_DOMAIN_POLICY);
+		else
+			title = g_strdup_printf("%s: %s - %s",
+					_("Domain Policy Editor"), mode[e_on],
+					CCS_PROC_POLICY_DOMAIN_POLICY);
 		break;
 	}
-	gtk_window_set_title(GTK_WINDOW(window), title); 
+
+	return title;
+}
+
+static void control_acl_window(transition_t *tran)
+{
+	static gint		x, y, w, h;
+	static gboolean	saved_flag = FALSE;
+
+	if (tran->current_page == CCS_SCREEN_ACL_LIST) {
+		gtk_window_move(GTK_WINDOW(tran->acl_window), x, y);
+		gtk_window_set_default_size(
+				GTK_WINDOW(tran->acl_window), w, h);
+		saved_flag = FALSE;
+		gtk_widget_show(tran->acl_window);
+	} else {
+		if (!saved_flag) {
+			gtk_window_get_position(
+				GTK_WINDOW(tran->acl_window), &x, &y);
+			gtk_window_get_size(
+				GTK_WINDOW(tran->acl_window), &w, &h);
+			saved_flag = TRUE;
+		}
+		gtk_widget_hide(tran->acl_window);
+	}
 }
 
 static void cb_switch_page(GtkWidget    *notebook,
@@ -897,11 +1249,13 @@ static void cb_switch_page(GtkWidget    *notebook,
 {
 	GtkTreeSelection	*selection_tree, *selection_list;
 	gint			old_page_num;
+	gchar			*title;
 
 	old_page_num = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
 	if (page_num == old_page_num)
 		return;
 
+	DEBUG_PRINT("In  Tab[%d]\n", page_num);
 	switch(page_num) {
 	case 0 :
 		selection_tree = gtk_tree_view_get_selection(
@@ -909,31 +1263,98 @@ static void cb_switch_page(GtkWidget    *notebook,
 		selection_list = gtk_tree_view_get_selection(
 					GTK_TREE_VIEW(tran->acl.listview));
 
-		if (tran->task_flag ||
-			(selection_tree &&
-		    gtk_tree_selection_count_selected_rows(selection_tree)))
-			tran->current_page = CCS_SCREEN_DOMAIN_LIST;
-		else if(selection_list &&
-		    gtk_tree_selection_count_selected_rows(selection_list))
-			tran->current_page = CCS_SCREEN_ACL_LIST;
-		else
-			tran->current_page = CCS_MAXSCREEN;
+		if (tran->acl_detached) {
+			if(selection_list &&
+			    gtk_tree_selection_count_selected_rows(selection_list))
+				tran->current_page = CCS_SCREEN_ACL_LIST;
+			control_acl_window(tran);
+			g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
+		} else {
+			if (tran->task_flag ||
+				(selection_tree &&
+			    gtk_tree_selection_count_selected_rows(selection_tree)))
+				tran->current_page = CCS_SCREEN_DOMAIN_LIST;
+			else if(selection_list &&
+			    gtk_tree_selection_count_selected_rows(selection_list))
+				tran->current_page = CCS_SCREEN_ACL_LIST;
+			else
+				tran->current_page = CCS_MAXSCREEN;
+			g_object_set(G_OBJECT(notebook), "can-focus", TRUE, NULL);
+		}
 		break;
 	case 1 :
 		tran->current_page = CCS_SCREEN_EXCEPTION_LIST;
+		if (tran->acl_detached) {
+			control_acl_window(tran);
+		}
+		g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
 		break;
 	case 2 :
 		tran->current_page = CCS_SCREEN_PROFILE_LIST;
+		if (tran->acl_detached) {
+			control_acl_window(tran);
+		}
+		g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
 		break;
 	}
 
-	disp_window_title(tran->window, tran->current_page);
+	title = disp_window_title(tran->current_page);
+	gtk_window_set_title(GTK_WINDOW(tran->window), title);
+	g_free(title);
 //	disp_statusbar(tran, tran->current_page);
 	set_sensitive(tran->actions, tran->task_flag,
 					tran->current_page);
 
 	refresh_transition(NULL, tran);
-	DEBUG_PRINT("page[%2d]\n", page_num);
+	DEBUG_PRINT("Out Tab[%d]\n", page_num);
+}
+/*---------------------------------------------------------------------------*/
+static void cb_set_focus(GtkWindow *window,
+				GtkWidget *view, transition_t *tran)
+{
+	if (view == tran->treeview) {
+		DEBUG_PRINT("Focus changed!!<Domain>\n");
+		tran->current_page = CCS_SCREEN_DOMAIN_LIST;
+	} else if (view == tran->acl.listview) {
+		DEBUG_PRINT("Focus changed!!<Acl>(%p)\n", view);
+		tran->current_page = CCS_SCREEN_ACL_LIST;
+	} else if (view == tran->exp.listview) {
+		DEBUG_PRINT("Focus changed!!<Exception>\n");
+		tran->current_page = CCS_SCREEN_EXCEPTION_LIST;
+	} else if (view == tran->prf.listview) {
+		DEBUG_PRINT("Focus changed!!<Profile>\n");
+		tran->current_page = CCS_SCREEN_PROFILE_LIST;
+	} else if (view == tran->tsk.treeview) {
+		DEBUG_PRINT("Focus changed!!<Process>\n");
+		tran->current_page = CCS_SCREEN_DOMAIN_LIST;
+	} else if (G_IS_OBJECT(view)) {
+		DEBUG_PRINT("Focus changed!![Other:%s(%p)]\n",
+				g_type_name(G_OBJECT_TYPE(view)), view);
+//		g_object_set(G_OBJECT(view), "can-focus", FALSE, NULL);
+	} else {
+		DEBUG_PRINT("Focus changed!![Not object(%p)]\n", view);
+	}
+}
+
+static void cb_set_focus_acl(GtkWindow *window,
+				GtkWidget *view, transition_t *tran)
+{
+	tran->current_page = CCS_SCREEN_ACL_LIST;
+
+	if (view == tran->acl.listview) {
+		DEBUG_PRINT("Focus changed!!<Acl>(%p)\n", view);
+	} else if (G_IS_OBJECT(view)) {
+		DEBUG_PRINT("Focus changed!![Other:%s(%p)]\n",
+				g_type_name(G_OBJECT_TYPE(view)), view);
+		g_object_set(G_OBJECT(view), "can-focus", FALSE, NULL);
+	} else {
+		DEBUG_PRINT("Focus changed!![Not object(%p)]\n", view);
+	}
+}
+
+static void cb_show_acl(GtkWidget *view, transition_t *tran)
+{
+	DEBUG_PRINT("Show ACL!!(%p)==(%p)\n", tran->acl.listview, view);
 }
 /*---------------------------------------------------------------------------*/
 int gpet_main(void)
@@ -942,12 +1363,15 @@ int gpet_main(void)
 	GtkWidget	*menubar, *toolbar = NULL;
 	GtkWidget	*statusbar;
 	gint		contextid;
-	GtkWidget	*vbox, *vbox2, *vbox3, *vbox4;
+	GtkWidget	*vbox;
+	GtkWidget	*tab1, *tab2, *tab3;
 	GtkWidget	*notebook;
-	GtkWidget	*box;
+	GtkWidget	*pane;
 	GtkWidget	*domainbar;
+	GtkWidget	*acl_window;
 	GtkWidget	*treeview, *listview;
-	GtkContainer	*container;
+	GtkContainer	*container, *acl_container;
+	gchar		*title;
 	struct ccs_domain_policy dp = { NULL, 0, NULL };
 	transition_t	transition;
 
@@ -974,9 +1398,10 @@ int gpet_main(void)
 
 	// create notebook
 	notebook = gtk_notebook_new();
-	gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
+//	gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
 	gtk_notebook_popup_enable(GTK_NOTEBOOK(notebook));
 	gtk_box_pack_start(GTK_BOX(vbox), notebook, TRUE, TRUE, 0);
+	g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
 
 	// create status bar
 	statusbar = gtk_statusbar_new();
@@ -985,24 +1410,26 @@ int gpet_main(void)
 	gtk_statusbar_push(GTK_STATUSBAR(statusbar), contextid, _("gpet"));
 
 
-	vbox2 = gtk_vbox_new(FALSE, 1);
+	tab1 = gtk_vbox_new(FALSE, 1);
 	// create name bar for full domain name
 	domainbar = gtk_entry_new();
-	gtk_box_pack_start(GTK_BOX(vbox2), domainbar, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(tab1), domainbar, FALSE, FALSE, 0);
 	gtk_editable_set_editable(GTK_EDITABLE(domainbar), FALSE);
 	gtk_entry_set_has_frame(GTK_ENTRY(domainbar), FALSE);
 	gtk_entry_set_text(GTK_ENTRY(domainbar), "");
+//	gtk_widget_set_can_focus(domainbar, FALSE);	// 2.18
+	g_object_set(G_OBJECT(domainbar), "can-focus", FALSE, NULL);
 
-	box = gtk_vpaned_new();
-	g_object_set_data(G_OBJECT(window), "pane", box);/* to save config */
-	gtk_container_add(GTK_CONTAINER(vbox2), box);
+	pane = gtk_vpaned_new();
+	g_object_set_data(G_OBJECT(window), "pane", pane);/* to save config */
+	gtk_box_pack_start(GTK_BOX(tab1), pane, TRUE, TRUE, 0);
 
 	// create domain transition view
 	treeview = create_tree_model();
 	container = create_domain_view(
-				box, treeview, gtk_paned_pack1, TRUE);
-	add_tree_data(GTK_TREE_VIEW(treeview), &dp);
-	gtk_tree_view_expand_all(GTK_TREE_VIEW(treeview));
+			pane, treeview, gtk_paned_pack1, TRUE, NULL, NULL);
+//a	add_tree_data(GTK_TREE_VIEW(treeview), &dp);
+//a	gtk_tree_view_expand_all(GTK_TREE_VIEW(treeview));
 		// ツリーインデント pixel(2.12)
 //	gtk_tree_view_set_level_indentation(GTK_TREE_VIEW(treeview), 0);
 		// ツリー開くマーク(2.12)
@@ -1011,49 +1438,70 @@ int gpet_main(void)
 						NULL);
 //	gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(treeview),
 //					GTK_TREE_VIEW_GRID_LINES_NONE);
+	// create domain policy float window
+	acl_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	title = disp_window_title(CCS_MAXSCREEN);
+	gtk_window_set_title(GTK_WINDOW(acl_window), title);
+	g_free(title);
+	gtk_container_set_border_width(GTK_CONTAINER(acl_window), 0);
+	gtk_window_set_position(GTK_WINDOW(acl_window),
+						GTK_WIN_POS_CENTER);
+	gtk_window_set_destroy_with_parent(GTK_WINDOW(acl_window), TRUE);
+	gtk_window_add_accel_group(GTK_WINDOW(acl_window),
+		g_object_get_data(G_OBJECT(window), "AccelGroup"));
+	gtk_widget_hide(acl_window);
+
 	// create domain policy view
 	listview = create_list_model(TRUE);
-	create_domain_view(box, listview, gtk_paned_pack2, FALSE);
+	transition.acl_detached = FALSE;
+	acl_container = create_domain_view(pane, listview, gtk_paned_pack2,
+			FALSE, acl_window, &transition.acl_detached);
+	/* to save menu.c Detach_acl() */
+	g_object_set_data(G_OBJECT(window), "acl_container", acl_container);
 
 	// copy data pointer
 	transition.domainbar = domainbar;
 	transition.container = container;
 	transition.treeview = treeview;
 	transition.acl.listview = listview;
+	transition.acl_window = acl_window;
 	transition.statusbar = statusbar;
 	transition.contextid = contextid;
 	transition.dp = &dp;
 	transition.acl.count = 0;
 	transition.acl.list = NULL;
 	transition.tsk.treeview = create_task_tree_model(&transition);
+	transition.addentry = ADDENTRY_NON;
 
 	// cursor move  domain window
 	g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)),
 				"changed", G_CALLBACK(cb_selection), &transition);
+//	g_signal_connect(GTK_TREE_VIEW(treeview), "cursor-changed",
+//			G_CALLBACK(cb_selection), &transition);
 	// double click or enter key  domain window
-	g_signal_connect(G_OBJECT(treeview), "row-activated", 
-			 G_CALLBACK(cb_initialize_domain), NULL);
+	g_signal_connect(G_OBJECT(treeview), "row-activated",
+			G_CALLBACK(cb_initialize_domain), NULL);
 	// mouse click  domain window
-	g_signal_connect(G_OBJECT(treeview), "button-press-event", 
-			 G_CALLBACK(cb_select_domain), &transition);
+	g_signal_connect(G_OBJECT(treeview), "button-press-event",
+			G_CALLBACK(cb_select_domain), &transition);
 	// mouse click  acl window
-	g_signal_connect(G_OBJECT(listview), "button-press-event", 
-			 G_CALLBACK(cb_select_acl), &transition);
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
+			G_CALLBACK(cb_select_acl), &transition);
 
 
-	vbox3 = gtk_vbox_new(FALSE, 1);
+	tab2 = gtk_vbox_new(FALSE, 1);
 	// create exception policy view
 	listview = create_list_model(TRUE);
-	create_list_view(vbox3, listview, TRUE);
+	create_list_view(tab2, listview, TRUE);
 	transition.exp.listview = listview;
 	// mouse click  exception window
-	g_signal_connect(G_OBJECT(listview), "button-press-event", 
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
 			 G_CALLBACK(cb_select_exp), &transition);
 
-	vbox4 = gtk_vbox_new(FALSE, 1);
+	tab3 = gtk_vbox_new(FALSE, 1);
 	// create profile view
 	listview = create_list_model(FALSE);
-	create_list_view(vbox4, listview, FALSE);
+	create_list_view(tab3, listview, FALSE);
 	transition.prf.listview = listview;
 	transition.prf.count = 0;
 	transition.prf.list = NULL;
@@ -1062,28 +1510,28 @@ int gpet_main(void)
 	else
 		add_list_data(&(transition.prf), FALSE);
 	// mouse click  profile window
-	g_signal_connect(G_OBJECT(listview), "button-press-event", 
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
 			 G_CALLBACK(cb_select_prf), &transition);
 
 	// create tab
-	create_tabs(notebook, vbox2, _("Domain Transition"));
-	create_tabs(notebook, vbox3, _("Exception Policy"));
-	create_tabs(notebook, vbox4, _("Profile"));
+	create_tabs(notebook, tab1, _("Domain Transition"));
+	create_tabs(notebook, tab2, _("Exception Policy"));
+	create_tabs(notebook, tab3, _("Profile"));
 
 	/* to save menu.c Process_state() */
 	g_object_set_data(G_OBJECT(window), "notebook", notebook);
-	g_object_set_data(G_OBJECT(window), "vbox2", vbox2);
+	g_object_set_data(G_OBJECT(window), "tab1", tab1);
 
 	// tab change
 	g_signal_connect(G_OBJECT(notebook), "switch_page",
 				G_CALLBACK(cb_switch_page), &transition);
-/*
-	gtk_tree_view_set_fixed_height_mode(GTK_TREE_VIEW(transition.treeview), TRUE);
-	gtk_tree_view_set_fixed_height_mode(GTK_TREE_VIEW(transition.acl.listview), TRUE);
-	gtk_tree_view_set_fixed_height_mode(GTK_TREE_VIEW(transition.exp.listview), TRUE);
-	gtk_tree_view_set_fixed_height_mode(GTK_TREE_VIEW(transition.prf.listview), TRUE);
-*/
 	read_config(&transition);
+
+	/* set widget names for .gpetrc */
+	gtk_widget_set_name(transition.window, "GpetMainWindow");
+	gtk_widget_set_name(transition.domainbar, "GpetDomainbar");
+	gtk_widget_set_name(transition.acl_window, "GpetAclWindow");
+
 	gtk_widget_show_all(window);
 
 	gtk_main();
@@ -1093,6 +1541,8 @@ int gpet_main(void)
 /*---------------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
+	const gchar *homedir = g_getenv("HOME");
+	gchar	*gpetrc;
 	int	result;
 
 #ifdef ENABLE_NLS
@@ -1100,8 +1550,14 @@ int main(int argc, char **argv)
 	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
 	textdomain(GETTEXT_PACKAGE);
 #endif
-	
+
 	gtk_init(&argc, &argv);
+
+	if (!homedir)
+		homedir = g_get_home_dir ();
+	gpetrc = g_build_path("/", homedir, ".gpetrc", NULL);
+	gtk_rc_parse(gpetrc);
+	g_free(gpetrc);
 
 	result = ccs_main(argc, argv);
 

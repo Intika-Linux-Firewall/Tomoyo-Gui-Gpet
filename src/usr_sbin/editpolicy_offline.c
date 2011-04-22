@@ -3,9 +3,9 @@
  *
  * TOMOYO Linux's utilities.
  *
- * Copyright (C) 2005-2010  NTT DATA CORPORATION
+ * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.0   2010/11/11
+ * Version: 1.8.1   2011/04/01
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -23,6 +23,15 @@
 #include "ccstools.h"
 #include "editpolicy.h"
 
+/**
+ * ccs_handle_misc_policy - Handle policy data other than domain policy.
+ *
+ * @mp:       Pointer to "struct ccs_misc_policy".
+ * @fp:       Pointer to "FILE".
+ * @is_write: True if write request, false otherwise.
+ *
+ * Returns nothing.
+ */
 static void ccs_handle_misc_policy(struct ccs_misc_policy *mp, FILE *fp,
 				   _Bool is_write)
 {
@@ -30,7 +39,7 @@ static void ccs_handle_misc_policy(struct ccs_misc_policy *mp, FILE *fp,
 	if (!is_write)
 		goto read_policy;
 	while (true) {
-		char *line = ccs_freadline(fp);
+		char *line = ccs_freadline_unpack(fp);
 		const struct ccs_path_info *cp;
 		_Bool is_delete;
 		if (!line)
@@ -70,44 +79,22 @@ read_policy:
 		fprintf(fp, "%s\n", mp->list[i]->name);
 }
 
-/* Variables */
-
-int ccs_persistent_fd = EOF;
-
-/* Main functions */
-
-void ccs_send_fd(char *data, int *fd)
-{
-	struct msghdr msg;
-	struct iovec iov = { data, strlen(data) };
-	char cmsg_buf[CMSG_SPACE(sizeof(int))];
-	struct cmsghdr *cmsg = (struct cmsghdr *) cmsg_buf;
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = cmsg_buf;
-	msg.msg_controllen = sizeof(cmsg_buf);
-	cmsg->cmsg_level = SOL_SOCKET;
-	cmsg->cmsg_type = SCM_RIGHTS;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-	msg.msg_controllen = cmsg->cmsg_len;
-	memmove(CMSG_DATA(cmsg), fd, sizeof(int));
-	sendmsg(ccs_persistent_fd, &msg, 0);
-	close(*fd);
-}
-
+/**
+ * ccs_editpolicy_offline_daemon - Emulate /proc/ccs/ interface.
+ *
+ * This function does not return.
+ */
 void ccs_editpolicy_offline_daemon(void)
 {
 	struct ccs_misc_policy mp[3];
-	struct ccs_domain_policy dp;
 	static const int buffer_len = 8192;
 	char *buffer = malloc(buffer_len);
 	if (!buffer)
 		ccs_out_of_memory();
-	memset(&dp, 0, sizeof(dp));
+	memset(&ccs_dp, 0, sizeof(ccs_dp));
 	memset(&mp, 0, sizeof(mp));
 	ccs_get();
-	ccs_assign_domain(&dp, CCS_ROOT_NAME, false, false);
+	ccs_assign_domain(&ccs_dp, CCS_ROOT_NAME, false, false);
 	while (true) {
 		FILE *fp;
 		struct msghdr msg;
@@ -141,8 +128,9 @@ void ccs_editpolicy_offline_daemon(void)
 		}
 		if (ccs_str_starts(buffer, "POST ")) {
 			if (!strcmp(buffer, CCS_PROC_POLICY_DOMAIN_POLICY))
-				ccs_handle_domain_policy(&dp, fp, true);
-			else if (!strcmp(buffer, CCS_PROC_POLICY_EXCEPTION_POLICY))
+				ccs_handle_domain_policy(&ccs_dp, fp, true);
+			else if (!strcmp(buffer,
+					 CCS_PROC_POLICY_EXCEPTION_POLICY))
 				ccs_handle_misc_policy(&mp[0], fp, true);
 			else if (!strcmp(buffer, CCS_PROC_POLICY_PROFILE))
 				ccs_handle_misc_policy(&mp[1], fp, true);
@@ -150,8 +138,9 @@ void ccs_editpolicy_offline_daemon(void)
 				ccs_handle_misc_policy(&mp[2], fp, true);
 		} else if (ccs_str_starts(buffer, "GET ")) {
 			if (!strcmp(buffer, CCS_PROC_POLICY_DOMAIN_POLICY))
-				ccs_handle_domain_policy(&dp, fp, false);
-			else if (!strcmp(buffer, CCS_PROC_POLICY_EXCEPTION_POLICY))
+				ccs_handle_domain_policy(&ccs_dp, fp, false);
+			else if (!strcmp(buffer,
+					 CCS_PROC_POLICY_EXCEPTION_POLICY))
 				ccs_handle_misc_policy(&mp[0], fp, false);
 			else if (!strcmp(buffer, CCS_PROC_POLICY_PROFILE))
 				ccs_handle_misc_policy(&mp[1], fp, false);
@@ -161,7 +150,7 @@ void ccs_editpolicy_offline_daemon(void)
 		fclose(fp);
 	}
 	ccs_put();
-	ccs_clear_domain_policy(&dp);
+	ccs_clear_domain_policy(&ccs_dp);
 	{
 		int i;
 		for (i = 0; i < 3; i++) {

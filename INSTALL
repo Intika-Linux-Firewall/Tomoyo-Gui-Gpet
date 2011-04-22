@@ -1,0 +1,38 @@
+gpet  Build / Install
+
+$ sudo apt-get install gcc make libncurses-dev
+
+$ sudo apt-get install intltool libgtk2.0-dev libgconf2-dev
+
+$ tar xjvf gpet-0.2.tar.bz2
+
+$ cd gpet-0.2
+$ ./configure --prefix /usr
+
+$ make
+
+$ sudo make install
+
+
+Instll location
+/usr
+├── doc
+│   └── gpet
+│       ├── AUTHORS
+│       ├── COPYING
+│       ├── ChangeLog
+│       ├── INSTALL
+│       ├── NEWS
+│       ├── README
+│       └── gpetrc.sample
+├── sbin
+│   └── gpet
+└── share
+    ├── gpet
+    │   └── pixmaps
+    │       └── tomoyo.png
+    └── locale
+        └── ja
+            └── LC_MESSAGES
+                └── gpet.mo
+

@@ -3,18 +3,18 @@
  * Gui Policy Editor for TOMOYO Linux
  *
  * other.c
- * Copyright (C) Yoshihiro Kusuno 2010 <yocto@users.sourceforge.jp>
+ * Copyright (C) Yoshihiro Kusuno 2010,2011 <yocto@users.sourceforge.jp>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
@@ -54,7 +54,7 @@ static GtkActionEntry entries[] = {
 
 static guint n_entries = G_N_ELEMENTS(entries);
 
-static const gchar *ui_info = 
+static const gchar *ui_info =
 "<ui>"
 "  <toolbar name='ToolBar'>"
 "    <toolitem action='Edit'/>"
@@ -91,7 +91,7 @@ static GtkWidget *create_dialog_menu(GtkWidget *parent, other_t *data)
 						actions, "Delete"), FALSE);
 	data->actions = actions;
 
-	gtk_window_add_accel_group(GTK_WINDOW(parent), 
+	gtk_window_add_accel_group(GTK_WINDOW(parent),
 				gtk_ui_manager_get_accel_group(ui));
 	if (!gtk_ui_manager_add_ui_from_string(ui, ui_info, -1, NULL)) {
 		g_message("building menus failed: %s", error->message);
@@ -192,11 +192,7 @@ static void create_manager_view(GtkWidget *dialog, GtkWidget *listview)
 					scrolledwin, TRUE, TRUE, 0);
 	gtk_container_add(GTK_CONTAINER(scrolledwin), listview);
 
-	// 複数行選択可
-	gtk_tree_selection_set_mode(gtk_tree_view_get_selection(
-		GTK_TREE_VIEW(listview)), GTK_SELECTION_MULTIPLE);
-	// マウス複数行選択
-	gtk_tree_view_set_rubber_banding(GTK_TREE_VIEW(listview), TRUE);
+	view_setting(listview, LIST_MANAGER);
 }
 
 static gboolean cb_select_list(GtkTreeView *listview,
@@ -221,7 +217,7 @@ static void cb_button(GtkButton *button, gpointer data)
 	static gchar		*folder = NULL;
 	gint			response;
 
-	
+
 	parent = GTK_WIDGET(g_object_get_data(G_OBJECT(data), "parent"));
 	entry  = GTK_WIDGET(data);
 
@@ -250,7 +246,7 @@ static void cb_button(GtkButton *button, gpointer data)
 		gtk_entry_set_text(GTK_ENTRY(entry), filename);
 		g_free(filename);
 	} else {
-		DEBUG_PRINT("Another response was recieved.\n");    
+		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
 }
@@ -283,9 +279,9 @@ static void append_manager(GtkAction *action, other_t *data)
 	button = gtk_button_new_from_stock(GTK_STOCK_OPEN);
 	g_signal_connect(G_OBJECT(button), "clicked",
 				G_CALLBACK(cb_button), (gpointer)entry);
-	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);  
+	gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 
-	gtk_widget_set_size_request(dialog, 600, -1);  
+	gtk_widget_set_size_request(dialog, 600, -1);
 	gtk_widget_show_all(dialog);
 
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -337,12 +333,12 @@ static void delete_manager(GtkAction *action, other_t *data)
 	DEBUG_PRINT("delete manager\n");
 	selection = gtk_tree_view_get_selection(
 				GTK_TREE_VIEW(data->manager.listview));
-	if (!selection || !(count = 
+	if (!selection || !(count =
 		    gtk_tree_selection_count_selected_rows(selection)))
 		return;
 
 	DEBUG_PRINT("count[%d]\n", count);
-	message = count > 1 ? 
+	message = count > 1 ?
 	 g_strdup_printf(_("Delete the %d selected managers?"), count) :
 	 g_strdup_printf(_("Delete the selected manager?"));
 	dialog = gtk_message_dialog_new(GTK_WINDOW(data->dialog),
@@ -374,15 +370,16 @@ void manager_main(transition_t *transition)
 	other_t		data;
 	GtkWidget		*dialog;
 	GtkWidget		*listview;
+	gchar			*title;
 	gint			response;
 
-	transition->current_page = CCS_SCREEN_MANAGER_LIST;
-
-	dialog = gtk_dialog_new_with_buttons(_("Manager Policy"),
+	title = disp_window_title(CCS_SCREEN_MANAGER_LIST);
+	dialog = gtk_dialog_new_with_buttons(title,
 			GTK_WINDOW(transition->window),
 			GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 			GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE,
 			NULL);
+	g_free(title);
 
 	create_dialog_menu(dialog, &data);
 	listview = create_list_manager();
@@ -398,10 +395,11 @@ void manager_main(transition_t *transition)
 					data.actions, "Add"), TRUE);
 	gtk_action_set_sensitive(gtk_action_group_get_action(
 					data.actions, "Delete"), TRUE);
-	g_signal_connect(G_OBJECT(listview), "button-press-event", 
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
 					G_CALLBACK(cb_select_list), &data);
 
 	gtk_widget_set_size_request(dialog, 640, 480);
+	gtk_widget_set_name(dialog, "GpetManagerDialog");	// .gpetrc
 	gtk_widget_show_all(dialog);
 
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -411,46 +409,74 @@ void manager_main(transition_t *transition)
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
+
+	if (transition->acl_detached &&
+	    transition->current_page == CCS_SCREEN_ACL_LIST)
+		transition->current_page = CCS_SCREEN_DOMAIN_LIST;
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 static void get_disp_column(const char *data, gchar **head,
 				gchar **now_str, gchar **quota_str)
 {
-	int		cnt;	
+	int		cnt;
+	gchar		name[16], date[16], time[16];
 	guint		now, quota;
-	gboolean	bNow = TRUE, bQuota = TRUE;	
+	gboolean	bNow = TRUE, bQuota = TRUE;
 
-	if ((cnt = sscanf(data, "Policy: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  Policy";
-	} else if ((cnt = sscanf(data, "Audit logs: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  Audit logs";
-	} else if ((cnt = sscanf(data, "Query lists: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  Query lists";
-	} else if ((cnt = sscanf(data, "Total: %u", &now)) == 1) {
-		*head = "Total memory in use";
-	} else if ((cnt = sscanf(data, "Shared: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  String data";
-	} else if ((cnt = sscanf(data, "Private: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  Numeric data";
-	} else if ((cnt = sscanf(data, "Dynamic: %u (Quota: %u)", &now, &quota)) >= 1) {
-		*head = "  Temporary data";
+
+	memset(name, 0, sizeof(name));
+	memset(date, 0, sizeof(date));
+	memset(time, 0, sizeof(time));
+	if ((cnt = sscanf(data, "Policy update: %u %s %s %s",
+	 &now, name, date, time)) >= 1) {
+		*head = "Policy update";
+	} else if ((cnt = sscanf(data,
+	 "Policy violation in learning mode: %u %s %s %s",
+	 &now, name, date, time)) >= 1) {
+		*head = "Policy violation in learning mode";
+	} else if ((cnt = sscanf(data,
+	 "Policy violation in permissive mode: %u %s %s %s",
+	 &now, name, date, time)) >= 1) {
+		*head = "Policy violation in permissive mode";
+	} else if ((cnt = sscanf(data,
+	 "Policy violation in enforcing mode: %u %s %s %s",
+	 &now, name, date, time)) >= 1) {
+		*head = "Policy violation in enforcing mode";
+	} else if ((cnt = sscanf(data,
+	 "Memory used by policy: %u (Quota: %u)",
+	 &now, &quota)) >= 1) {
+		*head = "Memory used by policy";
+	} else if ((cnt = sscanf(data,
+	 "Memory used by audit log: %u (Quota: %u)",
+	 &now, &quota)) >= 1) {
+		*head = "Memory used by audit log";
+	} else if ((cnt = sscanf(data,
+	 "Memory used by query message: %u (Quota: %u)",
+	 &now, &quota)) >= 1) {
+		*head = "Memory used by query message";
+	} else if ((cnt = sscanf(data,
+	 "Total memory used: %u", &now)) == 1) {
+		*head = "Total memory used";
 	} else {
 		*head = (gchar *)data;
 		bNow = FALSE;
 		bQuota = FALSE;
-		DEBUG_PRINT("Not found!\n");
+		g_warning("Not found! (Statistics)\n");
 	}
 	if (cnt == 1)
 		bQuota = FALSE;
 
 	*now_str = bNow ? g_strdup_printf("%u", now) : g_strdup("");
-	*quota_str = bQuota ? g_strdup_printf("%u", quota) : g_strdup("");
+	if (strlen(name))
+		*quota_str = g_strdup_printf("%s %s %s", name, date, time);
+	else
+		*quota_str = bQuota ? g_strdup_printf("%u", quota) : g_strdup("");
 }
 
 enum mem_column_pos {
-	LIST_HEAD,		// 
-	LIST_NOW,		// 
-	LIST_QUOTA,		// 
+	LIST_HEAD,		//
+	LIST_NOW,		//
+	LIST_QUOTA,		//
 	N_COLUMNS_MEM_LIST
 };
 
@@ -531,15 +557,15 @@ static GtkWidget *create_list_memory(generic_list_t *mem)
 
 	renderer = gtk_cell_renderer_text_new();
 	gtk_tree_view_insert_column_with_attributes(
-			GTK_TREE_VIEW(treeview), -1, _("Memory used     "),
-			renderer, "text", LIST_HEAD, NULL);
-	gtk_cell_renderer_set_fixed_size(renderer, 200, -1);
+		GTK_TREE_VIEW(treeview), -1, _(" "),
+		renderer, "text", LIST_HEAD, NULL);
+//	gtk_cell_renderer_set_fixed_size(renderer, 250, -1);
 
 	renderer = gtk_cell_renderer_text_new();
 	g_object_set(renderer, "xalign", 1.0, "ypad", 0, NULL);
 	gtk_tree_view_insert_column_with_attributes(
-			GTK_TREE_VIEW(treeview), -1, _(" Now (bytes) "),
-			renderer, "text", LIST_NOW, NULL);
+		GTK_TREE_VIEW(treeview), -1, _("Now (bytes)"),
+		renderer, "text", LIST_NOW, NULL);
 	gtk_cell_renderer_set_fixed_size(renderer, 100, -1);
 
 	renderer = gtk_cell_renderer_text_new();
@@ -548,9 +574,9 @@ static GtkWidget *create_list_memory(generic_list_t *mem)
 	g_signal_connect(renderer, "edited",
 				G_CALLBACK(cb_cell_edited), mem);
 	gtk_tree_view_insert_column_with_attributes(
-			GTK_TREE_VIEW(treeview), -1, _(" Quota (bytes) "),
-			renderer, "text", LIST_QUOTA, NULL);
-	gtk_cell_renderer_set_fixed_size(renderer, 100, -1);
+		GTK_TREE_VIEW(treeview), -1, _("Quota (bytes)"),
+		renderer, "text", LIST_QUOTA, NULL);
+//	gtk_cell_renderer_set_fixed_size(renderer, 170, -1);
 
 	// ヘッダ表示
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(treeview), TRUE);
@@ -571,6 +597,8 @@ static void create_memory_view(GtkWidget *dialog, GtkWidget *listview)
 	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
 					scrolledwin, TRUE, TRUE, 0);
 	gtk_container_add(GTK_CONTAINER(scrolledwin), listview);
+
+//	gtk_tree_view_set_enable_search(GTK_TREE_VIEW(listview), FALSE);
 }
 
 static void edit_memory(GtkAction *action, other_t *data)
@@ -596,16 +624,17 @@ void memory_main(transition_t *transition)
 	other_t		data;
 	GtkWidget		*dialog;
 	GtkWidget		*listview;
+	gchar			*title;
 	gint			response;
 
-	transition->current_page = CCS_SCREEN_MEMINFO_LIST;
-
-	dialog = gtk_dialog_new_with_buttons(_("Memory Usage"),
+	title = disp_window_title(CCS_SCREEN_STAT_LIST);
+	dialog = gtk_dialog_new_with_buttons(title,
 			GTK_WINDOW(transition->window),
 			GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
 			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
 			NULL);
+	g_free(title);
 
 	data.dialog = dialog;
 	data.memory.count = 0;
@@ -619,12 +648,13 @@ void memory_main(transition_t *transition)
 
 	gtk_action_set_sensitive(gtk_action_group_get_action(
 					data.actions, "Edit"), TRUE);
-	g_signal_connect(G_OBJECT(listview), "button-press-event", 
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
 					G_CALLBACK(cb_select_list), &data);
 
-	gtk_widget_set_size_request(dialog, 450, 300);
+	gtk_widget_set_size_request(dialog, 600, 300);
+	gtk_widget_set_name(dialog, "GpetStatisticsDialog");	// .gpetrc
 	gtk_widget_show_all(dialog);
-  
+
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (response == GTK_RESPONSE_APPLY) {
 		char	*err_buff = NULL;
@@ -638,5 +668,9 @@ void memory_main(transition_t *transition)
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
+
+	if (transition->acl_detached &&
+	    transition->current_page == CCS_SCREEN_ACL_LIST)
+		transition->current_page = CCS_SCREEN_DOMAIN_LIST;
 }
 

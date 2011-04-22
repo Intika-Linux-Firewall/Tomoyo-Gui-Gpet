@@ -3,9 +3,9 @@
  *
  * TOMOYO Linux's utilities.
  *
- * Copyright (C) 2005-2010  NTT DATA CORPORATION
+ * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.0   2010/11/11
+ * Version: 1.8.1   2011/04/01
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -35,27 +35,55 @@ struct ccs_number_group_entry {
 	int member_name_len;
 };
 
-/* Prototypes */
-static int ccs_add_address_group_entry(const char *group_name, const char *member_name, const _Bool is_delete);
-static struct ccs_address_group_entry *ccs_find_address_group(const char *group_name);
-static int ccs_add_number_group_entry(const char *group_name, const char *member_name, const _Bool is_delete);
-static struct ccs_number_group_entry *ccs_find_number_group(const char *group_name);
-static _Bool ccs_compare_path(const char *sarg, const char *darg);
-static _Bool ccs_compare_number(const char *sarg, const char *darg);
+/* Array of "address_group" entry. */
+static struct ccs_address_group_entry *ccs_address_group_list = NULL;
+/* Length of ccs_address_group_list array. */
+static int ccs_address_group_list_len = 0;
+/* Array of "number_group" entry. */
+static struct ccs_number_group_entry *ccs_number_group_list = NULL;
+/* Length of ccs_number_group_list array. */
+static int ccs_number_group_list_len = 0;
+
 static _Bool ccs_compare_address(const char *sarg, const char *darg);
+static _Bool ccs_compare_number(const char *sarg, const char *darg);
+static _Bool ccs_compare_path(const char *sarg, const char *darg);
+static int ccs_add_address_group_entry(const char *group_name,
+				       const char *member_name,
+				       const _Bool is_delete);
+static int ccs_add_number_group_entry(const char *group_name,
+				      const char *member_name,
+				      const _Bool is_delete);
+static struct ccs_address_group_entry *ccs_find_address_group
+(const char *group_name);
+static struct ccs_number_group_entry *ccs_find_number_group
+(const char *group_name);
 
-/* Utility functions */
-
+/**
+ * ccs_find_path_group - Find "path_group" entry.
+ *
+ * @group_name: Name of path group.
+ *
+ * Returns pointer to "struct ccs_path_group_entry" if found, NULL otherwise.
+ */
 struct ccs_path_group_entry *ccs_find_path_group(const char *group_name)
 {
 	int i;
 	for (i = 0; i < ccs_path_group_list_len; i++) {
-		if (!strcmp(group_name, ccs_path_group_list[i].group_name->name))
+		if (!strcmp(group_name,
+			    ccs_path_group_list[i].group_name->name))
 			return &ccs_path_group_list[i];
 	}
 	return NULL;
 }
 
+/**
+ * ccs_add_address_group_policy - Add "address_group" entry.
+ *
+ * @data:      Line to parse.
+ * @is_delete: True if it is delete request, false otherwise.
+ *
+ * Returns 0 on success, negative value otherwise.
+ */
 int ccs_add_address_group_policy(char *data, const _Bool is_delete)
 {
 	char *cp = strchr(data, ' ');
@@ -65,6 +93,14 @@ int ccs_add_address_group_policy(char *data, const _Bool is_delete)
 	return ccs_add_address_group_entry(data, cp, is_delete);
 }
 
+/**
+ * ccs_compare_path - Compare two pathnames.
+ *
+ * @sarg: First pathname. Maybe wildcard.
+ * @darg: Second pathname.
+ *
+ * Returns true if @darg is included in @sarg, false otherwise.
+ */
 static _Bool ccs_compare_path(const char *sarg, const char *darg)
 {
 	int i;
@@ -97,6 +133,14 @@ static _Bool ccs_compare_path(const char *sarg, const char *darg)
 	return false;
 }
 
+/**
+ * ccs_compare_address - Compare two IPv4/v6 addresses.
+ *
+ * @sarg: First address.
+ * @darg: Second address.
+ *
+ * Returns true if @darg is included in @sarg, false otherwise.
+ */
 static _Bool ccs_compare_address(const char *sarg, const char *darg)
 {
 	int i;
@@ -129,7 +173,17 @@ static _Bool ccs_compare_address(const char *sarg, const char *darg)
 	return false;
 }
 
-static void ccs_tokenize(char *buffer, char *w[5], u16 index)
+/**
+ * ccs_tokenize - Tokenize a line.
+ *
+ * @buffer: Line to tokenize.
+ * @w:      A "char *" array with 5 elements.
+ * @index:  One of values in "enum ccs_editpolicy_directives".
+ *
+ * Returns nothing.
+ */
+static void ccs_tokenize(char *buffer, char *w[5],
+			 enum ccs_editpolicy_directives index)
 {
 	u8 i;
 	u8 words;
@@ -200,6 +254,14 @@ static void ccs_tokenize(char *buffer, char *w[5], u16 index)
 	w[4] = buffer;
 }
 
+/**
+ * ccs_add_number_group_policy - Add "number_group" entry.
+ *
+ * @data:      Line to parse.
+ * @is_delete: True if it is delete request, false otherwise.
+ *
+ * Returns 0 on success, negative value otherwise.
+ */
 int ccs_add_number_group_policy(char *data, const _Bool is_delete)
 {
 	char *cp = strchr(data, ' ');
@@ -209,6 +271,14 @@ int ccs_add_number_group_policy(char *data, const _Bool is_delete)
 	return ccs_add_number_group_entry(data, cp, is_delete);
 }
 
+/**
+ * ccs_compare_number - Compare two numeric values.
+ *
+ * @sarg: First number.
+ * @darg: Second number.
+ *
+ * Returns true if @darg is included in @sarg, false otherwise.
+ */
 static _Bool ccs_compare_number(const char *sarg, const char *darg)
 {
 	int i;
@@ -238,38 +308,45 @@ static _Bool ccs_compare_number(const char *sarg, const char *darg)
 	return false;
 }
 
-void ccs_editpolicy_try_optimize(struct ccs_domain_policy *dp,
-				 const int current, const int screen)
+/**
+ * ccs_editpolicy_optimize - Try to merge entries included in other entries.
+ *
+ * @current: Index in the domain policy.
+ *
+ * Returns nothing.
+ */
+void ccs_editpolicy_optimize(const int current)
 {
 	char *cp;
-	u16 s_index;
+	enum ccs_editpolicy_directives s_index;
 	int index;
 	char *s[5];
 	char *d[5];
 	if (current < 0)
 		return;
-	s_index = ccs_generic_acl_list[current].directive;
+	s_index = ccs_gacl_list[current].directive;
 	if (s_index == CCS_DIRECTIVE_NONE)
 		return;
-	cp = strdup(ccs_generic_acl_list[current].operand);
+	cp = strdup(ccs_gacl_list[current].operand);
 	if (!cp)
 		return;
 	ccs_tokenize(cp, s, s_index);
 	ccs_get();
-	for (index = 0; index < ccs_list_item_count[screen]; index++) {
+	for (index = 0; index < ccs_list_item_count; index++) {
 		char *line;
-		const u16 d_index = ccs_generic_acl_list[index].directive;
+		const enum ccs_editpolicy_directives d_index =
+			ccs_gacl_list[index].directive;
 		if (index == current)
 			/* Skip source. */
 			continue;
-		if (ccs_generic_acl_list[index].selected)
+		if (ccs_gacl_list[index].selected)
 			/* Dest already selected. */
 			continue;
 		else if (s_index != d_index)
 			/* Source and dest have different directive. */
 			continue;
 		/* Source and dest have same directive. */
-		line = ccs_shprintf("%s", ccs_generic_acl_list[index].operand);
+		line = ccs_shprintf("%s", ccs_gacl_list[index].operand);
 		ccs_tokenize(line, d, d_index);
 		/* Compare condition part. */
 		if (strcmp(s[4], d[4]))
@@ -372,19 +449,21 @@ void ccs_editpolicy_try_optimize(struct ccs_domain_policy *dp,
 		default:
 			continue;
 		}
-		ccs_generic_acl_list[index].selected = 1;
+		ccs_gacl_list[index].selected = 1;
 	}
 	ccs_put();
 	free(cp);
 }
 
-/* Variables */
-
-static struct ccs_address_group_entry *ccs_address_group_list = NULL;
-int ccs_address_group_list_len = 0;
-
-/* Main functions */
-
+/**
+ * ccs_add_address_group_entry - Add "address_group" entry.
+ *
+ * @group_name:  Name of address group.
+ * @member_name: Address string.
+ * @is_delete:   True if it is delete request, false otherwise.
+ *
+ * Returns 0 on success, negative value otherwise.
+ */
 static int ccs_add_address_group_entry(const char *group_name,
 				       const char *member_name,
 				       const _Bool is_delete)
@@ -433,28 +512,44 @@ static int ccs_add_address_group_entry(const char *group_name,
 		memset(group, 0, sizeof(struct ccs_address_group_entry));
 		group->group_name = saved_group_name;
 	}
-	group->member_name = realloc(group->member_name,
-				     (group->member_name_len + 1) *
-				     sizeof(const struct ccs_ip_address_entry));
+	group->member_name =
+		realloc(group->member_name, (group->member_name_len + 1) *
+			sizeof(const struct ccs_ip_address_entry));
 	if (!group->member_name)
 		ccs_out_of_memory();
 	group->member_name[group->member_name_len++] = entry;
 	return 0;
 }
 
-static struct ccs_address_group_entry *ccs_find_address_group(const char *group_name)
+/**
+ * ccs_find_address_group - Find an "address_group" by name.
+ *
+ * @group_name: Group name to find.
+ *
+ * Returns pointer to "struct ccs_address_group_entry" if found,
+ * NULL otherwise.
+ */
+static struct ccs_address_group_entry *ccs_find_address_group
+(const char *group_name)
 {
 	int i;
 	for (i = 0; i < ccs_address_group_list_len; i++) {
-		if (!strcmp(group_name, ccs_address_group_list[i].group_name->name))
+		if (!strcmp(group_name,
+			    ccs_address_group_list[i].group_name->name))
 			return &ccs_address_group_list[i];
 	}
 	return NULL;
 }
 
-static struct ccs_number_group_entry *ccs_number_group_list = NULL;
-int ccs_number_group_list_len = 0;
-
+/**
+ * ccs_add_number_group_entry - Add "number_group" entry.
+ *
+ * @group_name:  Name of number group.
+ * @member_name: Number string.
+ * @is_delete:   True if it is delete request, false otherwise.
+ *
+ * Returns 0 on success, negative value otherwise.
+ */
 static int ccs_add_number_group_entry(const char *group_name,
 				      const char *member_name,
 				      const _Bool is_delete)
@@ -512,12 +607,41 @@ static int ccs_add_number_group_entry(const char *group_name,
 	return 0;
 }
 
-static struct ccs_number_group_entry *ccs_find_number_group(const char *group_name)
+/**
+ * ccs_find_number_group - Find an "number_group" by name.
+ *
+ * @group_name: Group name to find.
+ *
+ * Returns pointer to "struct ccs_number_group_entry" if found,
+ * NULL otherwise.
+ */
+static struct ccs_number_group_entry *ccs_find_number_group
+(const char *group_name)
 {
 	int i;
 	for (i = 0; i < ccs_number_group_list_len; i++) {
-		if (!strcmp(group_name, ccs_number_group_list[i].group_name->name))
+		if (!strcmp(group_name,
+			    ccs_number_group_list[i].group_name->name))
 			return &ccs_number_group_list[i];
 	}
 	return NULL;
+}
+
+/**
+ * ccs_editpolicy_clear_groups - Clear path_group/number_group/address_group for reloading policy.
+ *
+ * Returns nothing.
+ */
+void ccs_editpolicy_clear_groups(void)
+{
+	while (ccs_path_group_list_len)
+		free(ccs_path_group_list[--ccs_path_group_list_len].
+		     member_name);
+	/*
+	while (ccs_address_group_list_len)
+		free(ccs_address_group_list[--ccs_address_group_list_len].
+		     member_name);
+	*/
+	ccs_address_group_list_len = 0;
+	ccs_number_group_list_len = 0;
 }

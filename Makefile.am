@@ -10,7 +10,8 @@ gpetdoc_DATA = \
 	AUTHORS\
 	ChangeLog\
 	INSTALL\
-	NEWS
+	NEWS\
+	gpetrc.sample
 
 
 INTLTOOL_FILES = intltool-extract.in \

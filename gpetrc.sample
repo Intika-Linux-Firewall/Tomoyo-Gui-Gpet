@@ -1,0 +1,76 @@
+#
+# gpet  gtk resources sample
+#
+
+#--- Main window tree & list
+style "gpetStyleMain"
+{
+	GtkTreeView::odd_row_color	= "#e4ebf5"
+	GtkTreeView::even_row_color	= "#ffffff"
+	font_name="Takaoゴシック 11"
+
+	base[NORMAL]	= "#FFFFFF"	# active window cursor back
+  	text[SELECTED]	= "#FFFFFF"	# active window select cursor text
+	base[SELECTED]	= "#03BB03"	# active window select cursor back
+
+  	text[NORMAL]	= "#000000"	# text
+  	text[ACTIVE]	= "#111111"	# inactive window select cursor text
+	base[ACTIVE]	= "#CCDDCC"	# inactive window select cursor back
+}
+widget "GpetMainWindow.*.GtkTreeView" style "gpetStyleMain"
+
+#--- Detached ACL list
+style "gpetStyleAcl"
+{
+	font_name="Sans 8"
+
+	base[NORMAL]	= "#FFFFFF"	# active window cursor back
+	base[SELECTED]	= "#CCAA05"	# active window select cursor back
+  	text[SELECTED]	= "#FFFFFF"	# active window select cursor text
+
+  	text[NORMAL]	= "#000000"	# text
+  	text[ACTIVE]	= "#111111"	# inactive window select cursor text
+	base[ACTIVE]	= "#DDCCCC"	# inactive window select cursor back
+}
+widget "GpetAclWindow.*.GtkTreeView" style "gpetStyleAcl"
+
+#--- Dialog
+style "gpetStyleDialog"
+{
+	font_name="Sans 9"
+
+	base[NORMAL]	= "#FFFFFF"	# active window cursor back
+	base[SELECTED]	= "#0303BB"	# active window select cursor back
+  	text[SELECTED]	= "#FFFFFF"	# active window select cursor text
+
+  	text[NORMAL]	= "#000000"	# text
+  	text[ACTIVE]	= "#111111"	# inactive window select cursor text
+	base[ACTIVE]	= "#CCCCDD"	# inactive window select cursor back
+}
+widget "GpetManagerDialog.*.GtkTreeView" style "gpetStyleDialog"
+widget "GpetStatisticsDialog.*.GtkTreeView" style "gpetStyleDialog"
+widget "GpetProfileSelectDialog.*.GtkTreeView" style "gpetStyleDialog"
+
+#--- Full domain name
+style "gpetStyleDomainbar"
+{
+	font_name="Sans 8"
+  	text[NORMAL]	= "#03BB03"	# text
+}
+widget "*.GpetDomainbar" style "gpetStyleDomainbar"
+
+#--- Tab
+style "gpetStyleNotebook"
+{
+	bg[NORMAL]	= "#AAFFAA"	# active tab back
+	bg[ACTIVE]	= "#669966"	# inactive tab back
+
+	base[NORMAL]	= "#FFFFFF"	# tree back
+	base[ACTIVE]	= "#CCCCDD"	# inactive window select cursor back
+	base[SELECTED]	= "#0303BB"	# active window select cursor back
+
+  	text[SELECTED]	= "#FFFFFF"	# active window select cursor text
+  	text[NORMAL]	= "#03BB03"	# text
+}
+#class "GtkNotebook" style "gpetStyleNotebook"
+widget_class "*.GtkNotebook.*.*" style "gpetStyleNotebook"

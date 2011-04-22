@@ -48,6 +48,7 @@ gpet_SOURCES = \
 	conf.c \
 	process.c \
 	other.c \
+	search.c \
 	interface.inc
 
 gpet_LDFLAGS = \

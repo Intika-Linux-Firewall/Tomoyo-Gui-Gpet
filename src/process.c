@@ -3,18 +3,18 @@
  * Gui Policy Editor for TOMOYO Linux
  *
  * process.c
- * Copyright (C) Yoshihiro Kusuno 2010 <yocto@users.sourceforge.jp>
- * 
+ * Copyright (C) Yoshihiro Kusuno 2010,2011 <yocto@users.sourceforge.jp>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
@@ -84,7 +84,7 @@ void add_task_tree_data(GtkTreeView *treeview, task_list_t *tsk)
 	GtkTreeStore	*store;
 	GtkTreeIter	*iter = NULL;
 	int		number = 0, nest = -1;
-	
+
 	store = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 	gtk_tree_store_clear(store);
 	add_task_tree_store(store, iter, tsk, &number, nest);
@@ -136,7 +136,7 @@ static gboolean cb_select_process(GtkTreeView *treeview,
 		/* get menu.c create_menu()*/
 		popup = g_object_get_data(
 				G_OBJECT(transition->window), "popup");
-		
+
 		gtk_menu_popup(GTK_MENU(popup), NULL, NULL, NULL, NULL,
 					0, gtk_get_current_event_time());
 		return TRUE;
@@ -224,9 +224,32 @@ GtkWidget *create_task_tree_model(transition_t *transition)
 	g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)),
 		"changed", G_CALLBACK(cb_selection_proc), transition);
 	// mouse click  process window
-	g_signal_connect(G_OBJECT(treeview), "button-press-event", 
+	g_signal_connect(G_OBJECT(treeview), "button-press-event",
 			 G_CALLBACK(cb_select_process), transition);
 
 	return treeview;
+}
+/*---------------------------------------------------------------------------*/
+gint get_current_process_index(task_list_t *tsk)
+{
+	GtkTreeSelection	*selection;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter;
+	GList			*list;
+	gint			index = -1;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tsk->treeview));
+
+	if (selection &&
+	    gtk_tree_selection_count_selected_rows(selection)) {
+		list = gtk_tree_selection_get_selected_rows(selection, NULL);
+		model = gtk_tree_view_get_model(GTK_TREE_VIEW(tsk->treeview));
+		gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
+		gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
+		g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+		g_list_free(list);
+	}
+
+	return index;
 }
 

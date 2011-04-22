@@ -5,3 +5,4 @@ src/menu.c
 src/conf.c
 src/process.c
 src/other.c
+src/search.c
