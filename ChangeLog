@@ -1,2 +1,33 @@
+2011/04/23  yocto  <yocto@users.sourceforge.jp>
+
+ 0.2 Released
+
+ * The version of ccstools used was changed from 1.8.0 to 1.8.1.
+
+ * Added support for detach of ACL window.
+
+ * Changed menu [memory usage] to [Statistics]
+   Changed key bind Ctrl+U to Ctrl+S
+
+ * Added support for offline mode & nework mode.
+
+ * Added support for resource file.
+   sample file [gpetrc.sample]
+
+ * Changed key bind Ctrl+O to Ctrl+@
+
+ * Added support for Extraction of redundant ACL entries.
+   Ctrl+O
+
+ * Added support for copy of the cursor line.(domain、ACL、exception)
+   Ctrl+C
+
+ * Added support for search dialog.
 
 
+
+2011/04/23  yocto  <yocto@users.sourceforge.jp>
+
+ 0.1 Released
+
+ * initial release

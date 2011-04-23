@@ -9,12 +9,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
@@ -47,7 +47,7 @@ void read_config(transition_t *tran)
 	gint		paned_position;
 
 	gtk_widget_set_size_request(tran->window, 640, 480);
-	gtk_widget_set_size_request(tran->acl_window, 200, 200);
+	gtk_widget_set_size_request(tran->acl_window, 600, 400);
 
 	client = gconf_client_get_default();
 	if (!gconf_client_dir_exists(client, DIRECTORY, &err)) {
