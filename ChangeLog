@@ -1,3 +1,12 @@
+2011/04/25  yocto  <yocto@users.sourceforge.jp>
+
+ 0.2.1 Update
+
+ * Fixed
+    The installation directory in the document was corrected
+     from [/usr/doc/gpet/] to [/usr/share/doc/gpet/]
+
+
 2011/04/23  yocto  <yocto@users.sourceforge.jp>
 
  0.2 Released
