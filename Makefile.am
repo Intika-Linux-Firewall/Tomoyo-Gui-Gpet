@@ -1,14 +1,17 @@
 ## Process this file with automake to produce Makefile.in
 ## Created by Anjuta
 
+ACLOCAL_AMFLAGS = -I m4
+
 SUBDIRS = src po
 
-gpetdocdir = ${prefix}/doc/gpet
+gpetdocdir = ${prefix}/share/doc/gpet
 gpetdoc_DATA = \
 	README\
 	COPYING\
 	AUTHORS\
 	ChangeLog\
+	ChangeLog.jp\
 	INSTALL\
 	NEWS\
 	gpetrc.sample

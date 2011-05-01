@@ -1,29 +1,39 @@
-gpet(Gui Policy Editor for TOMOYO Linux)
-    Build / Install / Run
+gpet 0.2.1                                                2011-04-25
 
+gpet (Gui Policy Editor for TOMOYO Linux)
+    Build / Install / Run / Uninstall
 
 *** Build ***
 $ sudo apt-get install gcc make libncurses-dev
 
 $ sudo apt-get install intltool libgtk2.0-dev libgconf2-dev
 
-$ tar xjvf gpet-0.2.tar.bz2
+$ tar xjvf gpet-0.2.1.tar.bz2
 
-$ cd gpet-0.2
+$ cd gpet-0.2.1
 $ ./configure --prefix /usr
 
 $ make
 
+
 *** Install ***
 $ sudo make install
 
+
 *** Run ***
-$ sudo echo '/usr/sbin/gpet'|ccs-loadpolicy -m
+$ sudo sh -c 'echo /usr/sbin/gpet >> /etc/ccs/manager.conf'
+$ sudo ccs-loadpolicy -m < /etc/ccs/manager.conf
+
 $ sudo gpet [{policy_dir|remote_ip:remote_port}]
+
+
+ Ubuntu 11.04  disable overlay scrollbars.
+   $ sudo sh -c "LIBOVERLAY_SCROLLBAR=0 gpet"
+
 
 --- Option ---
 Font & color change
-$ cp /usr/doc/gpet/gpetrc.sample ~/.gpetrc
+$ cp /usr/share/doc/gpet/gpetrc.sample ~/.gpetrc
 
 
 *** Instll location ***
@@ -48,3 +58,6 @@ $ cp /usr/doc/gpet/gpetrc.sample ~/.gpetrc
             └── LC_MESSAGES
                 └── gpet.mo
 
+
+*** Uninstall ***
+$ sudo make uninstall
