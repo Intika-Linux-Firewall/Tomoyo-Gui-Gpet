@@ -94,6 +94,9 @@ static void generic_acl_copy(struct ccs_generic_acl **src, int src_cnt,
 	while (dst_cnt)
 		free((void *)((*dst)[--dst_cnt].operand));
 
+	if (src_cnt < 1)
+		return;
+
 	*dst = realloc(*dst, src_cnt * sizeof(struct ccs_generic_acl));
 	if (!(*dst))
 		ccs_out_of_memory();

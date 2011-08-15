@@ -30,11 +30,11 @@
 #include "gpet.h"
 
 enum task_column_pos {
-	COLUMN_INDEX,			// data index (invisible)
+	COLUMN_INDEX,		// data index (invisible)
 	COLUMN_NUMBER,		// n
-	COLUMN_COLON,			// :
+	COLUMN_COLON,		// :
 	COLUMN_PROFILE,		// profile
-	COLUMN_NAME,			// process name + pid + domain name
+	COLUMN_NAME,		// process name + pid + domain name
 	N_COLUMNS_TREE
 };
 
@@ -45,6 +45,7 @@ static int add_task_tree_store(GtkTreeStore *store,
 {
 	GtkTreeIter	iter;
 	gchar		*str_prof;
+	gchar		*str_domain;
 	gchar		*line;
 	int		n = 0, index;
 
@@ -52,18 +53,20 @@ static int add_task_tree_store(GtkTreeStore *store,
 
 	index = tsk->task[*number].index;
 	str_prof = g_strdup_printf("%3u", tsk->task[*number].profile);
+	str_domain = decode_from_octal_str(tsk->task[*number].domain);
 	line = g_strdup_printf("%s (%u) %s",
 				tsk->task[*number].name,
 				tsk->task[*number].pid,
-				tsk->task[*number].domain);
+				str_domain);
 	gtk_tree_store_set(store, &iter,
 				COLUMN_INDEX,		index,
 				COLUMN_NUMBER,  	*number,
 				COLUMN_COLON,		":",
-				COLUMN_PROFILE,	str_prof,
+				COLUMN_PROFILE,		str_prof,
 				COLUMN_NAME,		line,
 				-1);
 	DEBUG_PRINT("[%3d]%3d(%d):%s %s\n", index, *number, nest, str_prof, line);
+	g_free(str_domain);
 	g_free(str_prof);
 	g_free(line);
 
@@ -148,11 +151,12 @@ static gboolean cb_select_process(GtkTreeView *treeview,
 static void cb_selection_proc(GtkTreeSelection *selection,
 					transition_t *transition)
 {
-	GtkTreeIter	iter;
-	gint		select_count;
-	GtkTreeModel	*model;
-	GList		*list;
-	gint		index;
+	GtkTreeIter		iter;
+	gint			select_count;
+	GtkTreeModel		*model;
+	GList			*list;
+	gint			index;
+	gchar			*str_domain;
 	GtkTreePath		*path = NULL;
 	GtkTreeViewColumn	*column = NULL;
 
@@ -167,8 +171,10 @@ static void cb_selection_proc(GtkTreeSelection *selection,
 	g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
 	g_list_free(list);
 	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
-	gtk_entry_set_text(GTK_ENTRY(transition->domainbar),
-				transition->tsk.task[index].domain);
+
+	str_domain = decode_from_octal_str(transition->tsk.task[index].domain);
+	gtk_entry_set_text(GTK_ENTRY(transition->domainbar), str_domain);
+	g_free(str_domain);
 
 	gtk_tree_view_get_cursor(GTK_TREE_VIEW(
 			transition->acl.listview), &path, &column);

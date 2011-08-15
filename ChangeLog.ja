@@ -1,0 +1,77 @@
+2011/06/18  yocto  <yocto@users.sourceforge.jp>
+
+ 0.3 Released
+
+ * ダイアログでのenter key有効化
+     domainウィンドウ：プロファイル設定ダイアログ
+     profileウィンドウ：プロファイル変更ダイアログ
+     domain, ACL, exception, profile, managerウィンドウ：追加ダイアログ
+
+ * 検索ダイアログに機能追加
+     大文字と小文字を区別する (M)atch case
+     折返しも対象にする (W)rap around
+     enterで閉じる Close (d)ialog
+
+ * パス名の漢字等をそのまま表示
+     domain, ACL, exceptionウィンドウの表示、検索、追加で有効
+       processウィンドウのコマンド名は8進表記のまま
+     追加ダイアログで入力するパス名にスペースや漢字等が含まれる場合は
+     シングルクォーテーション[']で囲む
+       パス名に[']が含まれる場合は\エスケープ[\']する
+
+ * Statisticsの日時をローカルタイム表示に変更
+
+ * カーソル行データコピーを追加：profile
+
+ * managerウィンドウにツールバーを追加
+
+ * Statisticsウィンドウにツールバー、適用ボタンを追加
+
+
+2011/04/25  yocto  <yocto@users.sourceforge.jp>
+
+ 0.2.1 Update
+
+ * ドキュメントのインストールディレクトリを
+   「/usr/doc/gpet/」から「/usr/share/doc/gpet/」に修正
+
+
+2011/04/23  yocto  <yocto@users.sourceforge.jp>
+
+ 0.2 Released
+
+ * ベースとなるccs-editpolicyをccstools 1.8.1 20110401版 に変更
+
+ * ACLウィンドウの切離し機能を追加
+     メニュー > 表示 > ACLウィンドウ切離し
+
+ * メニューの memory usage を Statistics に変更
+     ショーカットキー Ctrl+U を Ctrl+S に変更
+
+ * オフラインモードとネットワークモードに対応
+     現状はccs-editpolicy同様、起動引数で指定です。
+
+ * フォント及び色のリソースファイルに対応 gpetrc.sample 追加
+     下記のようにコピーして中身を変更してください
+     cp /usr/share/doc/gpetrc.sample ~/.gpetrc
+
+ * プロセスモードのショーカットキーを Ctrl+O から Ctrl+@ に変更
+
+ * ACLの冗長エントリ抽出(パターン化支援)機能を追加
+     ショーカットキー Ctrl+O
+
+ * ウィンドウキャプションにモード表示を追加
+
+ * エントリ追加時にカーソルを追加項目に移動するように変更
+
+ * カーソル行データコピー domain、ACL、exception
+     コピー時にクリップボード(OSバッファ)にもコピーする
+
+ * ダイアログ検索を追加 domain、ACL、exception、profile
+
+
+2010/12/18  yocto  <yocto@users.sourceforge.jp>
+
+ 0.1 Released
+
+ * 初期リリース

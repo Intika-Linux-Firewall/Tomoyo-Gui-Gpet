@@ -64,7 +64,7 @@ static GtkActionEntry entries[] = {
 	N_("_OptimizationSupport"), "<control>O",
 	N_("Extraction of redundant ACL entries"), G_CALLBACK(optimize_acl)},
 
-  {"Search", GTK_STOCK_FIND, N_("_Search"), "<control>F",
+  {"Search", GTK_STOCK_FIND, N_("_Search..."), "<control>F",
 	N_("Search for text"), G_CALLBACK(search_input)},
   {"SearchBack", GTK_STOCK_GO_BACK, N_("Search_Backwards"), "<control><shift>G",
 	N_("Search backwards for the same text"), G_CALLBACK(search_back)},
@@ -73,9 +73,9 @@ static GtkActionEntry entries[] = {
 
   {"Refresh", GTK_STOCK_REFRESH, N_("_Refresh"), "<control>R",
 	N_("Refresh to the latest information"), G_CALLBACK(refresh_transition)},
-  {"Manager", GTK_STOCK_DND, N_("_Manager"), "<control>M",
+  {"Manager", GTK_STOCK_DND, N_("_Manager..."), "<control>M",
 	N_("Manager Profile Editor"), G_CALLBACK(manager_transition)},
-  {"Memory", GTK_STOCK_DND, N_("_Statistics"), "<control>S",
+  {"Memory", GTK_STOCK_DND, N_("_Statistics..."), "<control>S",
 	N_("Statistics"), G_CALLBACK(memory_transition)},
 
   {"About", GTK_STOCK_ABOUT, N_("_About"), "<alt>A",
@@ -255,6 +255,123 @@ void disp_statusbar(transition_t *transition, int scr)
 	gtk_statusbar_push(GTK_STATUSBAR(transition->statusbar),
 				transition->contextid, status_str);
 	g_free(status_str);
+}
+/*---------------------------------------------------------------------------*/
+/* from realpath.c (ccs-patch-1.8.1-20110505) */
+gchar *encode_to_octal_str(const char *str)
+{
+	int	i;
+	int	str_len;
+	int	len = 0;
+	const char *p = str;
+	char	*cp;
+	char	*cp0;
+
+	if (!p)
+		return NULL;
+
+	str_len = strlen(str);
+	for (i = 0; i < str_len; i++) {
+		const unsigned char c = p[i];
+		if (c == '\\')
+//			len += 2;
+			len++;
+		else if (c > ' ' && c < 127)
+			len++;
+		else
+			len += 4;
+	}
+	len++;
+
+	/* Reserve space for appending "/". */
+	cp = g_malloc0(len + 10);
+	if (!cp)
+		return NULL;
+
+	cp0 = cp;
+	p = str;
+	for (i = 0; i < str_len; i++) {
+		const unsigned char c = p[i];
+		if (c == '\\') {
+			*cp++ = '\\';
+//			*cp++ = '\\';
+		} else if (c > ' ' && c < 127) {
+			*cp++ = c;
+		} else {
+			*cp++ = '\\';
+			*cp++ = (c >> 6) + '0';
+			*cp++ = ((c >> 3) & 7) + '0';
+			*cp++ = (c & 7) + '0';
+		}
+	}
+	return cp0;
+}
+
+static gint encode_copy(gchar *cp, gchar *buff)
+{
+	gchar		*str;
+	gint		len;
+
+	if (!*cp)
+		return 0;
+
+	str = encode_to_octal_str(cp);
+	strcpy(buff, str);
+	len = strlen(str) - 1;
+	g_free(str);
+
+	return len;
+}
+
+static gchar *escape_str_encode(const char *input)
+{
+	gchar		*str, *cp0, *cp1;
+	gchar		*tmp, buff[strlen(input)*3+1];
+	gboolean	match = FALSE;
+
+	if (!input)
+		return NULL;
+
+	cp0 = str = g_strdup(input);
+	tmp = buff;
+	for( ; *cp0; cp0++, tmp++) {
+		if (*cp0 == '\\' && *(cp0 + 1) == '\'') {
+			*tmp = *++cp0;
+		} else if (*cp0 == '\'') {	// start "
+			cp1 = ++cp0;
+			for ( ; *cp0; cp0++) {
+				if (*cp0 == '\\' && *(cp0 + 1) == '\'') {
+					if (cp1 < cp0) {
+						*cp0 = '\0';
+						tmp += encode_copy(cp1, tmp);
+						tmp++;
+					} else {
+						*tmp = *(cp0 + 1);
+					}
+					cp1 = ++cp0;
+				} else if (*cp0 == '\'') {	// end "
+					*cp0 = '\0';
+					match = TRUE;
+					break;
+				}
+			}
+
+			if (match) {
+				tmp += encode_copy(cp1, tmp);
+				match = FALSE;
+			} else {
+				g_warning(" [\']pair not match!");
+				cp0 = cp1;
+				*tmp = *cp0;
+			}
+		} else {
+			*tmp = *cp0;
+		}
+	}
+	*tmp = *cp0;
+
+	g_free(str);
+	return g_strdup(buff);
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 static void terminate(GtkAction *action, transition_t *transition)
@@ -494,16 +611,20 @@ static void copy_line(GtkAction *action, transition_t *transition)
 		index = get_current_domain_index(transition);
 		view = transition->treeview;
 		if (index >= 0)
-			insert_history_buffer(view, g_strdup(
+			insert_history_buffer(view, decode_from_octal_str(
 				ccs_domain_name(transition->dp, index)));
 		break;
 	case CCS_SCREEN_ACL_LIST :
 		view = transition->acl.listview;
-		insert_history_buffer(view, get_alias_and_operand(view));
+		insert_history_buffer(view, get_alias_and_operand(view, TRUE));
 		break;
 	case CCS_SCREEN_EXCEPTION_LIST :
 		view = transition->exp.listview;
-		insert_history_buffer(view, get_alias_and_operand(view));
+		insert_history_buffer(view, get_alias_and_operand(view, TRUE));
+		break;
+	case CCS_SCREEN_PROFILE_LIST :
+		view = transition->prf.listview;
+		insert_history_buffer(view, get_alias_and_operand(view, FALSE));
 		break;
 	default :
 		break;
@@ -693,7 +814,25 @@ static gchar	*Last_entry_string = NULL;
 
 gchar *get_combo_entry_last(void)
 {
-	return Last_entry_string;
+	gchar		*str, *buff;
+	gchar		*cp;
+
+	buff = g_malloc0(strlen(Last_entry_string) + 1);
+	if (!buff)
+		return NULL;
+
+	str = buff;
+	for (cp = Last_entry_string; *cp; cp++) {
+		if (*cp == '\\' && *(cp + 1) == '\'') {
+			*str++ = *++cp;
+		} else if (*cp != '\'') {
+			*str++ = *cp;
+		}
+	}
+	*str = *cp;
+
+//g_print("[%s]\n", buff);
+	return buff;
 }
 
 static void insert_history_buffer(GtkWidget *view, gchar *entry)
@@ -710,8 +849,10 @@ static void insert_history_buffer(GtkWidget *view, gchar *entry)
 	gtk_clipboard_set_text(clipboard, entry, -1);
 
 	for (list = combolist; list; list = g_list_next(list)) {
-		if (strcmp(entry, (gchar *)list->data) == 0)
+		if (strcmp(entry, (gchar *)list->data) == 0) {
+			g_free(entry);
 			return;
+		}
 	}
 
 	combolist = g_list_insert(combolist, entry, 0);
@@ -723,7 +864,59 @@ static void insert_history_buffer(GtkWidget *view, gchar *entry)
 	}
 }
 
-static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
+static gchar *normalize_strdup(gchar *input)
+{
+	gchar		*cp;
+	gint		len = strlen(input);
+	gchar		*str, *buff;
+	gboolean	match = FALSE;
+
+	if (len < 1)
+		return NULL;
+
+	cp = input + len - 1;
+	if (g_ascii_isspace(*cp)) {
+		while (len && g_ascii_isspace(*cp)) {
+			cp--;
+			len--;
+		}
+	}
+
+	cp = input;
+	while (len && g_ascii_isspace(*cp)) {
+		cp++;
+		len--;
+	}
+
+	buff = g_malloc0(len + 1);
+	if (!buff)
+		return NULL;
+
+	str = buff;
+	while (len && *cp) {
+		if (*cp == '\\' && *(cp + 1) == '\'') {
+			*str++ = *cp++;
+			len--;
+		} else if (*cp == '\'') {
+			match = match ? FALSE : TRUE;
+		} else {
+			if (!match && g_ascii_isspace(*cp)) {
+				while (g_ascii_isspace(*(cp+1))) {
+					cp++;
+					len--;
+				}
+			}
+		}
+		*str++ = *cp++;
+		len--;
+	}
+	*str = '\0';
+
+//g_print("%2d[%s]\n", len, buff);
+	return buff;
+}
+
+static gint combo_entry_apply(GtkWidget *combo, gchar **new_text)
 {
 	GtkComboBox	*combobox;
 	GList		*list;
@@ -735,7 +928,9 @@ static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 		return 1;
 
 	g_free(Last_entry_string);
-	Last_entry_string = g_strdup(*new_text);
+	Last_entry_string = normalize_strdup(*new_text);
+	g_free(*new_text);
+	*new_text = g_strdup(Last_entry_string);
 
 	for (list = combolist; list; list = g_list_next(list)) {
 		if (strcmp(*new_text, (gchar *)list->data) == 0) {
@@ -757,6 +952,17 @@ static gint combo_entry_activate(GtkWidget *combo, gchar **new_text)
 	return exist_flag ? 1 : 0;
 }
 
+static void cb_combo_entry_activate(GtkEntry *entry, GtkWidget *dialog)
+{
+	const gchar	*input = gtk_entry_get_text(entry);
+
+	if (!input || strcmp(input, "") == 0)
+		return;
+
+	gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+}
+
+/*---------------------------------------------------------------------------*/
 static gint append_dialog(transition_t *transition,
 				gchar *title, gchar **input)
 {
@@ -777,6 +983,9 @@ static gint append_dialog(transition_t *transition,
 			NULL);
 
 	combo = gtk_combo_box_entry_new_text();
+	g_signal_connect(G_OBJECT(GTK_BIN(combo)->child) , "activate" ,
+			G_CALLBACK(cb_combo_entry_activate), dialog);
+
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), 0);
 
 	for (list = combolist; list; list = g_list_next(list)) {
@@ -791,7 +1000,12 @@ static gint append_dialog(transition_t *transition,
 
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	if (response == GTK_RESPONSE_APPLY) {
-		combo_entry_activate(combo, input);
+		gchar *tmp;
+		combo_entry_apply(combo, input);
+		tmp = escape_str_encode(*input);
+//		g_print("[%s]:[%s]\n", *input, tmp);
+		g_free(*input);
+		*input = tmp;
 		result = 0;
 	}
 	gtk_widget_destroy(dialog);
@@ -955,6 +1169,12 @@ static gboolean apply_profile(transition_t *transition,
 	}
 }
 
+static void cb_profile_activate(GtkTreeView *treeview, GtkTreePath *treepath,
+			GtkTreeViewColumn *treeviewcolumn, GtkWidget *dialog)
+{
+	gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+}
+
 static void set_domain(transition_t *transition)
 {
 	GtkTreeSelection	*domain_selection;
@@ -981,6 +1201,8 @@ static void set_domain(transition_t *transition)
 			NULL);
 
 	listview = create_list_profile();
+	g_signal_connect(G_OBJECT(listview), "row-activated",
+			G_CALLBACK(cb_profile_activate), dialog);
 	add_list_profile(listview, &(transition->prf));
 	view_cursor_set(listview, NULL, NULL);
 	gtk_container_add(
@@ -1002,6 +1224,16 @@ retry_profile:
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
+}
+
+static void cb_profile_entry_activate(GtkEntry *entry, GtkWidget *dialog)
+{
+	const gchar	*input = gtk_entry_get_text(entry);
+
+	if (!input || strcmp(input, "") == 0)
+		return;
+
+	gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
 }
 
 static void edit_profile(transition_t *transition)
@@ -1042,6 +1274,9 @@ static void edit_profile(transition_t *transition)
 			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
 			NULL);
+
+	g_signal_connect(G_OBJECT(entry) , "activate" ,
+			G_CALLBACK(cb_profile_entry_activate), dialog);
 
 	hbox = gtk_hbox_new(FALSE, 5);
 	gtk_container_add(
@@ -1133,8 +1368,8 @@ static void show_about_dialog(void)
 	gtk_about_dialog_set_copyright(about,
 				"Copyright(C) 2010,2011 TOMOYO Linux Project");
 	gtk_about_dialog_set_comments(about,
-				"Gui Policy Editor for TOMOYO Linux 1.8"
-				" or AKARI 1.0"
+				"Gui Policy Editor for TOMOYO Linux 1.8.1"
+				" or AKARI 1.0.11"
 				"\n(based on ccs-editpolicy:ccstools)");
 	gtk_about_dialog_set_website(about, "http://sourceforge.jp/projects/gpet/");
 //	gtk_about_dialog_set_website_label(about, "http://tomoyo.sourceforge.jp/");

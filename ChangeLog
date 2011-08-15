@@ -1,3 +1,34 @@
+2011/06/18  yocto  <yocto@users.sourceforge.jp>
+
+ 0.3 Released
+
+ * Enter key is enabled in the dialog box
+     Domain window: profile list dialog
+     Profile window: profile edit dialog
+     Domain, ACL, Exception, Profile, Manager window: add dialog
+
+ * Search dialog enhancement
+     Match case
+     Wrap around
+     Close dialog
+
+ * Path name displayed as it is.
+     Domain, ACL, Exception window: display, search, add
+       The command name of the Process window is still octal.
+     When space and multi byte character, etc. are included in the path name
+     input by an additional dialog, it encloses it with single quotation ['].
+       Single quotes in the path name ['] may contain escaped with a backslash
+       [\'] should be.
+
+ * Statistics window display was changed to display the local date and time.
+
+ * Added support for copy of the cursor line.(Profile window)
+
+ * Added a toolbar to the Manager window.
+
+ * Added a toolbar and Apply button to the Statistics window.
+
+
 2011/04/25  yocto  <yocto@users.sourceforge.jp>
 
  0.2.1 Update
@@ -28,14 +59,14 @@
  * Added support for Extraction of redundant ACL entries.
    Ctrl+O
 
- * Added support for copy of the cursor line.(domain、ACL、exception)
+ * Added support for copy of the cursor line.(Domain, ACL, Exception window)
    Ctrl+C
 
  * Added support for search dialog.
 
 
 
-2011/04/23  yocto  <yocto@users.sourceforge.jp>
+2010/12/18  yocto  <yocto@users.sourceforge.jp>
 
  0.1 Released
 
