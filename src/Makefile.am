@@ -46,6 +46,7 @@ gpet_SOURCES = \
 	menu.c \
 	g_undef.h \
 	conf.c \
+	conf.h \
 	process.c \
 	other.c \
 	search.c \
