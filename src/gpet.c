@@ -36,6 +36,42 @@
 #include "gpet.h"
 
 /*---------------------------------------------------------------------------*/
+/* from util.c (ccs-patch-1.8.1-20110505) */
+static gboolean is_octal_char(const char *str)
+{
+        return *str >= '0' && *str++ <= '3' &&
+                *str >= '0' && *str++ <= '7' &&
+                *str >= '0' && *str <= '7';
+}
+/* from util.c (ccs-patch-1.8.1-20110505) */
+static gchar octal_char_to_binary(const char *str)
+{
+        return ((str[0] - '0') << 6) + ((str[1] - '0') << 3) + (str[2] - '0');
+}
+
+gchar *decode_from_octal_str(const char *name)
+{
+	gchar	*tmp, buff[strlen(name)+1];
+
+	if (!name)
+		return NULL;
+
+	tmp = buff;
+	for( ; *name; name++, tmp++) {
+		if (*name == '\\' && is_octal_char(name + 1)) {
+			name++;
+			*tmp = octal_char_to_binary(name);
+			name += 2;
+		} else {
+			*tmp = *name;
+		}
+	}
+	*tmp = *name;
+
+	return g_strdup(buff);
+}
+
+/*---------------------------------------------------------------------------*/
 enum tree_column_pos {
 	COLUMN_INDEX,			// data index (invisible)
 	COLUMN_NUMBER,			// n
@@ -55,11 +91,13 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 {
 	GtkTreeIter	iter;
 	gchar		*color = "black";
-	gchar		*str_num, *str_prof;
+	gchar		*str_num, *str_prof, *name;
 	gchar		*line = NULL, *is_dis = NULL, *domain;
 	const char	*sp;
 	const struct ccs_transition_control_entry *transition_control;
 	int		n, number, redirect_index = -1;
+
+//g_print("add_tree_store index[%3d] nest[%2d]\n", *index, nest);
 
 	sp = ccs_domain_name(dp, *index);
 	for (n = 0; ; n++) {
@@ -68,6 +106,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 			break;
 		sp = cp + 1;
 	}
+	name = decode_from_octal_str(sp);
 
 	gtk_tree_store_append(store, &iter, parent_iter);
 	number = dp->list[*index].number;
@@ -120,7 +159,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	}
 	domain = g_strdup_printf("%s%s%s%s%s",
 			dp->list[*index].is_dd ? "( " : "",
-			sp,
+			name,
 			dp->list[*index].is_dd ? " )" : "",
 			line ? line : "",
 			is_dis ? is_dis : ""
@@ -128,6 +167,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	gtk_tree_store_set(store, &iter, COLUMN_DOMAIN_NAME, domain,
 					 COLUMN_COLOR, color,
 					 COLUMN_REDIRECT, redirect_index, -1);
+	g_free(name);
 	g_free(line);
 	g_free(is_dis);
 	g_free(domain);
@@ -159,7 +199,7 @@ void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp)
 	int		index = 0, nest = -1;
 
 	store = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
-	gtk_tree_store_clear(store);
+	gtk_tree_store_clear(store);	// TODO 遅い
 	add_tree_store(store, iter, dp, &index, nest);
 }
 /*---------------------------------------------------------------------------*/
@@ -284,14 +324,19 @@ void add_list_data(generic_list_t *generic, gboolean alias_flag)
 		gtk_list_store_append(store, &iter);
 
 		if (alias_flag) {
+			gchar *ope = decode_from_octal_str(
+						generic->list[i].operand);
+
 			alias = (gchar *)
 			  ccs_directives[generic->list[i].directive].alias;
 			gtk_list_store_set(store, &iter,
 				LIST_NUMBER, str_num,
 				LIST_COLON,  ":",
 				LIST_ALIAS, alias,
-				LIST_OPERAND, generic->list[i].operand,
+//				LIST_OPERAND, generic->list[i].operand,
+				LIST_OPERAND, ope,	// test
 				-1);
+			g_free(ope);	// test
 		} else {
 			profile = g_strdup_printf("%3u-",
 					generic->list[i].directive);
@@ -406,7 +451,7 @@ gint get_current_domain_index(transition_t *transition)
 	return index;
 }
 
-gchar *get_alias_and_operand(GtkWidget *view)
+gchar *get_alias_and_operand(GtkWidget *view, gboolean alias_flag)
 {
 	GtkTreeSelection	*selection;
 	GtkTreeIter		iter;
@@ -421,9 +466,17 @@ gchar *get_alias_and_operand(GtkWidget *view)
 		list = gtk_tree_selection_get_selected_rows(selection, NULL);
 		model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 		gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
-		gtk_tree_model_get(model, &iter,
+		if (alias_flag) {
+			gtk_tree_model_get(model, &iter,
 				LIST_ALIAS, &alias, LIST_OPERAND, &operand, -1);
-		str_buff = g_strdup_printf("%s %s", alias, operand);
+			str_buff = g_strdup_printf("%s %s", alias, operand);
+			g_free(alias);
+			g_free(operand);
+		} else {
+			gtk_tree_model_get(model, &iter,
+						LIST_OPERAND, &operand, -1);
+			str_buff = g_strchug(operand);
+		}
 	}
 
 	return str_buff;
@@ -434,10 +487,9 @@ static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
 {
 	GtkWidget		*view = NULL;
 	GtkTreeSelection	*selection;
-	const char		*domain;
 	gint			index;
-	gchar			*alias = NULL, *operand = NULL, *str_buff = NULL;
-	gchar			*entry;
+	gchar			*alias = NULL, *operand = NULL;
+	gchar			*entry, *str_buff = NULL;
 	int			cmp = -1;
 
 
@@ -447,8 +499,9 @@ static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
 	case ADDENTRY_DOMAIN_LIST :
 		view = transition->treeview;
 		gtk_tree_model_get(model, iter, COLUMN_INDEX, &index, -1);
-		domain = ccs_domain_name(transition->dp, index);
-		cmp = strcmp(entry, domain);
+		str_buff = decode_from_octal_str(
+					ccs_domain_name(transition->dp, index));
+		cmp = strcmp(entry, str_buff);
 		break;
 	case ADDENTRY_ACL_LIST :
 		view = transition->acl.listview;
@@ -475,6 +528,7 @@ static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
 	g_free(alias);
 	g_free(operand);
 	g_free(str_buff);
+	g_free(entry);
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
 
@@ -545,13 +599,14 @@ void set_position_addentry(transition_t *transition, GtkTreePath **path)
 static void cb_selection(GtkTreeSelection *selection,
 				transition_t *transition)
 {
-	GtkTreeIter	iter;
-	gint		select_count;
-	GtkTreeModel	*model;
-	GList		*list;
-	gint		index;
+	GtkTreeIter		iter;
+	gint			select_count;
+	GtkTreeModel		*model;
+	GList			*list;
+	gint			index;
 	GtkTreePath		*path = NULL;
 	GtkTreeViewColumn	*column = NULL;
+	gchar			*name;
 
 	DEBUG_PRINT("In  **************************** \n");
 	select_count = gtk_tree_selection_count_selected_rows(selection);
@@ -567,8 +622,9 @@ static void cb_selection(GtkTreeSelection *selection,
 	g_list_free(list);
 	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
 	DEBUG_PRINT("--- index [%4d] ---\n", index);
-	gtk_entry_set_text(GTK_ENTRY(transition->domainbar),
-				ccs_domain_name(transition->dp, index));
+	name = decode_from_octal_str(ccs_domain_name(transition->dp, index));
+	gtk_entry_set_text(GTK_ENTRY(transition->domainbar), name);
+	g_free(name);
 
 	gtk_tree_view_get_cursor(GTK_TREE_VIEW(
 			transition->acl.listview), &path, &column);
@@ -735,6 +791,7 @@ void set_sensitive(GtkActionGroup *actions, int task_flag,
 	case CCS_SCREEN_PROFILE_LIST :
 		sens_edt = TRUE;
 		sens_add = TRUE;
+		sens_cpy = TRUE;
 		break;
 	}
 
@@ -1009,6 +1066,7 @@ g_free(str_path);
 		gtk_tree_selection_unselect_path(selection, path);
 	}
 
+	g_free(str_num);
 	return FALSE;
 }
 

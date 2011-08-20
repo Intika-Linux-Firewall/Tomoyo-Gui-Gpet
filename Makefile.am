@@ -11,7 +11,7 @@ gpetdoc_DATA = \
 	COPYING\
 	AUTHORS\
 	ChangeLog\
-	ChangeLog.jp\
+	ChangeLog.ja\
 	INSTALL\
 	NEWS\
 	gpetrc.sample

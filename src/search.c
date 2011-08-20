@@ -28,10 +28,12 @@
 #include <glib/gi18n.h>
 
 #include "gpet.h"
+#include "conf.h"
 
 typedef struct _search_t {
 	transition_t	*tran;
 	GtkWidget	*combo;
+	GtkWidget	*dialog;
 } search_t;
 
 #define COMBO_LIST_LIMIT	10
@@ -217,14 +219,42 @@ static gint get_current_index(transition_t *transition)
 static void search(transition_t *transition, gboolean forward)
 {
 	GtkWidget	*view = NULL;
-	gint		index, count;
+	gint		index, start_index, count;
 	gchar		*str_p = NULL;
+	gchar		*haystack = NULL;
+	gchar		*tmp_entry, *entry = NULL;
+	search_conf_t	conf;
 
-	index = get_current_index(transition);
+	if (!S_entry || strcmp(S_entry, "") == 0)
+		return;
+
+	get_conf_search(&conf);
+
+	tmp_entry = encode_to_octal_str(S_entry);
+	entry = conf.match ? g_strdup(tmp_entry) : g_ascii_strup(tmp_entry, -1);
+	g_free(tmp_entry);
+
+	start_index = index = get_current_index(transition);
 	count = get_list_count(transition);
-	while (S_entry) {
-		forward ? index++ : index--;
-		if (index < 0 || count <= index)
+	while (entry) {
+		if (forward) {
+			index++;
+			if (count <= index) {
+				if (conf.wrap)
+					index = 0;
+				else
+					break;
+			}
+		} else {
+			index--;
+			if (index < 0) {
+				if (conf.wrap)
+					index = count - 1;
+				else
+					break;
+			}
+		}
+		if (index == start_index)
 			break;
 
 		switch((int)transition->current_page) {
@@ -263,18 +293,25 @@ static void search(transition_t *transition, gboolean forward)
 			break;
 		}
 
-		if(g_strrstr(str_p, S_entry)) {
+		g_free(haystack);
+		haystack = conf.match ?
+				g_strdup(str_p) : g_ascii_strup(str_p, -1);
+
+		if (transition->current_page != CCS_SCREEN_DOMAIN_LIST)
+			g_free(str_p);
+
+		if(g_strrstr(haystack, entry)) {
 			GtkTreeModel	*model;
 			put_locate_index(transition, index);
 			model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 			gtk_tree_model_foreach(model,
 			  (GtkTreeModelForeachFunc)search_pos_list, transition);
+			g_free(haystack);
 			break;
 		}
 	}
 
-	if (transition->current_page != CCS_SCREEN_DOMAIN_LIST)
-		g_free(str_p);
+	g_free(entry);
 
 	gtk_action_set_sensitive(gtk_action_group_get_action(
 				transition->actions, "SearchBack"), TRUE);
@@ -298,7 +335,7 @@ static void cb_combo_changed(GtkComboBox *combobox, gpointer nothing)
 	}
 }
 
-static void cb_combo_entry_activate(GtkEntry *entry, search_t *srch)
+static void cb_search_entry_activate(GtkEntry *entry, search_t *srch)
 {
 	GtkComboBox	*combobox;
 	gchar		*new_text;
@@ -307,12 +344,13 @@ static void cb_combo_entry_activate(GtkEntry *entry, search_t *srch)
 
 	combobox = GTK_COMBO_BOX(srch->combo);
 	new_text = gtk_combo_box_get_active_text(combobox);
-	if(!new_text || strcmp(new_text, "") == 0)
+	if (!new_text || strcmp(new_text, "") == 0) {
 		return;
+	}
 
 	g_free(S_entry);
 	S_entry = g_strdup(new_text);
-//	g_print("cb_combo_entry_activate[%s]\n", new_text);
+//	g_print("cb_search_entry_activate[%s]\n", new_text);
 
 	for (list = combolist; list; list = g_list_next(list)) {
 		if (strcmp(new_text, (gchar *)list->data) == 0) {
@@ -330,20 +368,36 @@ static void cb_combo_entry_activate(GtkEntry *entry, search_t *srch)
 		}
 	}
 
-	if (entry)
+	if (entry) {
+		search_conf_t	conf;
 		search(srch->tran, TRUE);
+		get_conf_search(&conf);
+		if (conf.close)
+			gtk_dialog_response(GTK_DIALOG(srch->dialog),
+							GTK_RESPONSE_CLOSE);
+	}
 }
 
 static void cb_btn_prev_clicked(GtkButton *widget , search_t *srch)
 {
-	cb_combo_entry_activate(NULL, srch);
+	search_conf_t	conf;
+	cb_search_entry_activate(NULL, srch);
 	search(srch->tran, FALSE);
+	get_conf_search(&conf);
+	if (conf.close)
+		gtk_dialog_response(GTK_DIALOG(srch->dialog),
+							GTK_RESPONSE_CLOSE);
 }
 
 static void cb_btn_next_clicked(GtkButton *widget , search_t *srch)
 {
-	cb_combo_entry_activate(NULL, srch);
+	search_conf_t	conf;
+	cb_search_entry_activate(NULL, srch);
 	search(srch->tran, TRUE);
+	get_conf_search(&conf);
+	if (conf.close)
+		gtk_dialog_response(GTK_DIALOG(srch->dialog),
+							GTK_RESPONSE_CLOSE);
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 GList *insert_item(GtkComboBox	*combobox,
@@ -389,6 +443,60 @@ static gchar *search_title(transition_t *transition)
 	return title;
 }
 
+static void cb_toggled_match(GtkToggleButton *widget, search_conf_t *conf)
+{
+	conf->match = gtk_toggle_button_get_active(widget);
+	put_conf_search(conf);
+}
+static void cb_toggled_wrap(GtkToggleButton *widget, search_conf_t *conf)
+{
+	conf->wrap = gtk_toggle_button_get_active(widget);
+	put_conf_search(conf);
+}
+static void cb_toggled_close(GtkToggleButton *widget, search_conf_t *conf)
+{
+	conf->close = gtk_toggle_button_get_active(widget);
+	put_conf_search(conf);
+}
+
+static void create_check_box(GtkWidget *parent, search_conf_t *conf)
+{
+	GtkWidget		*hbox, *vbox_l, *vbox_r;
+	GtkWidget		*match, *wrap, *close;
+
+	hbox = gtk_hbox_new(FALSE, 15);
+	gtk_box_pack_start(GTK_BOX(parent), hbox, TRUE, TRUE, 10);
+
+	vbox_l = gtk_vbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox_l, TRUE, FALSE, 0);
+	vbox_r = gtk_vbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox_r, TRUE, FALSE, 0);
+
+	match = gtk_check_button_new_with_mnemonic(_("_Match case"));
+	gtk_box_pack_start(GTK_BOX(vbox_l), match, TRUE, FALSE, 0);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(match), conf->match);
+	g_signal_connect(G_OBJECT(match), "toggled",
+				G_CALLBACK(cb_toggled_match), conf);
+
+	wrap = gtk_check_button_new_with_mnemonic(_("_Wrap around"));
+	gtk_box_pack_start(GTK_BOX(vbox_l), wrap, TRUE, FALSE, 0);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(wrap), conf->wrap);
+	g_signal_connect(G_OBJECT(wrap), "toggled",
+					G_CALLBACK(cb_toggled_wrap), conf);
+
+	close = gtk_check_button_new_with_mnemonic(_("Close _dialog"));
+	gtk_box_pack_start(GTK_BOX(vbox_r), close, FALSE, FALSE, 0);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(close), conf->close);
+	g_signal_connect(G_OBJECT(close), "toggled",
+					G_CALLBACK(cb_toggled_close), conf);
+
+/*
+	大文字と小文字を区別する (M)atch case
+	折返しも対象にする (W)rap around
+	enterで閉じる Close (d)ialog
+*/
+}
+
 void search_input(GtkAction *action, transition_t *transition)
 {
 	GtkWidget		*dialog, *parent;
@@ -398,6 +506,7 @@ void search_input(GtkAction *action, transition_t *transition)
 	GtkWidget		*btn_next, *btn_prev;
 	GList			*list;
 	search_t		srch;
+	search_conf_t		conf;
 	gint			response;
 
 	parent = (transition->acl_detached &&
@@ -425,10 +534,11 @@ void search_input(GtkAction *action, transition_t *transition)
 	entry = gtk_combo_box_entry_new_text();
 	srch.tran = transition;
 	srch.combo = entry;
+	srch.dialog = dialog;
 	g_signal_connect(G_OBJECT(entry) , "changed",
 			G_CALLBACK(cb_combo_changed), NULL);
 	g_signal_connect(G_OBJECT(GTK_BIN(entry)->child) , "activate" ,
-			G_CALLBACK(cb_combo_entry_activate), &srch);
+			G_CALLBACK(cb_search_entry_activate), &srch);
 	gtk_box_pack_start(GTK_BOX(vbox_l), entry, FALSE, FALSE, 0);
 
 	for (list = combolist; list; list = g_list_next(list)) {
@@ -437,20 +547,23 @@ void search_input(GtkAction *action, transition_t *transition)
 	}
 	gtk_combo_box_set_active(GTK_COMBO_BOX(entry), 0);
 
+	get_conf_search(&conf);
+	create_check_box(vbox_l, &conf);
+
 	vbox_r = gtk_vbox_new(FALSE, 5);
 	gtk_box_pack_start(GTK_BOX(hbox), vbox_r, FALSE, FALSE, 0);
 
 	btn_prev = gtk_button_new_from_stock(GTK_STOCK_GO_BACK);
-	gtk_box_pack_start(GTK_BOX(vbox_r), btn_prev, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox_r), btn_prev, TRUE, TRUE, 0);
 	g_signal_connect(G_OBJECT(btn_prev) , "clicked" ,
 			G_CALLBACK (cb_btn_prev_clicked) , &srch);
 
 	btn_next = gtk_button_new_from_stock(GTK_STOCK_GO_FORWARD);
-	gtk_box_pack_start(GTK_BOX(vbox_r), btn_next, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox_r), btn_next, TRUE, TRUE, 0);
 	g_signal_connect(G_OBJECT(btn_next) , "clicked" ,
 			G_CALLBACK (cb_btn_next_clicked) , &srch);
 
-	gtk_widget_set_size_request(dialog, 400, -1);
+	gtk_widget_set_size_request(dialog, 520, -1);
 	put_locate_index(transition, get_current_index(transition));
 	gtk_widget_show_all(dialog);
 

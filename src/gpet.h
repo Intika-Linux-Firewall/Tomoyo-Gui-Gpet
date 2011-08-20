@@ -129,10 +129,11 @@ const char *get_policy_dir(void);
 const char *get_domain_last_name(const int index);
 
 // gpet.c
+gchar *decode_from_octal_str(const char *name);
 void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp);
 void add_list_data(generic_list_t *generic, gboolean alias_flag);
 gint get_current_domain_index(transition_t *transition);
-gchar *get_alias_and_operand(GtkWidget *view);
+gchar *get_alias_and_operand(GtkWidget *view, gboolean alias_flag);
 void set_position_addentry(transition_t *transition, GtkTreePath **path);
 void set_sensitive(GtkActionGroup *actions, int task_flag,
 				enum ccs_screen_type current_page);
@@ -155,6 +156,7 @@ int gpet_main(void);
 GtkWidget *create_menu(GtkWidget *parent, transition_t *transition,
                        GtkWidget **toolbar);
 void disp_statusbar(transition_t *transition, int scr);
+gchar *encode_to_octal_str(const char *str);
 void view_cursor_set(GtkWidget *view,
 			GtkTreePath *path, GtkTreeViewColumn *column);
 void refresh_transition(GtkAction *action, transition_t *transition);

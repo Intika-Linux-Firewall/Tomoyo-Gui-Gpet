@@ -29,14 +29,33 @@
 #include <glib/gi18n.h>
 
 #include "gpet.h"
+#include "conf.h"
 
 #define PRINT_WARN(err) {g_warning("%s", err->message);g_error_free(err);err = NULL;}
 
 #define DIRECTORY		"/apps/gpet"
-#define WINDOW_POSITION	DIRECTORY"/window_position"
+#define WINDOW_POSITION		DIRECTORY"/window_position"
 #define WINDOW_SIZE		DIRECTORY"/window_size"
-#define ACL_WINDOW_SIZE	DIRECTORY"/acl_window_size"
-#define PANED_POSITION	DIRECTORY"/paned_position"
+#define ACL_WINDOW_SIZE		DIRECTORY"/acl_window_size"
+#define PANED_POSITION		DIRECTORY"/paned_position"
+
+#define SEARCH_DIR		DIRECTORY"/search"
+#define MATCH			SEARCH_DIR"/match_case"
+#define WRAP			SEARCH_DIR"/wrap_around"
+#define CLOSE			SEARCH_DIR"/close_dialog"
+
+
+static search_conf_t	save_search = {TRUE, FALSE, FALSE};
+
+void get_conf_search(search_conf_t *conf)
+{
+	*conf = save_search;
+}
+
+void put_conf_search(search_conf_t *conf)
+{
+	save_search = *conf;
+}
 
 void read_config(transition_t *tran)
 {
@@ -45,6 +64,7 @@ void read_config(transition_t *tran)
 	gint		x, y, w, h;
 	GtkPaned	*paned;
 	gint		paned_position;
+	gboolean	tmp_bool;
 
 	gtk_widget_set_size_request(tran->window, 640, 480);
 	gtk_widget_set_size_request(tran->acl_window, 600, 400);
@@ -82,6 +102,29 @@ void read_config(transition_t *tran)
 		else
 			PRINT_WARN(err);
 	}
+
+
+	if (!gconf_client_dir_exists(client, SEARCH_DIR, &err)) {
+		return;
+	}
+
+	tmp_bool = gconf_client_get_bool(client, MATCH, &err);
+	if (!err)
+		save_search.match = tmp_bool;
+	else
+		PRINT_WARN(err);
+
+	tmp_bool = gconf_client_get_bool(client, WRAP, &err);
+	if (!err)
+		save_search.wrap = tmp_bool;
+	else
+		PRINT_WARN(err);
+
+	tmp_bool = gconf_client_get_bool(client, CLOSE, &err);
+	if (!err)
+		save_search.close = tmp_bool;
+	else
+		PRINT_WARN(err);
 }
 
 void write_config(transition_t *tran)
@@ -128,5 +171,24 @@ void write_config(transition_t *tran)
 			PRINT_WARN(err);
 		}
 	}
+
+
+	if (!gconf_client_dir_exists(client, SEARCH_DIR, &err)) {
+		gconf_client_add_dir(client, SEARCH_DIR,
+				GCONF_CLIENT_PRELOAD_NONE, &err);
+	}
+	if (err) {
+		PRINT_WARN(err);
+		return;
+	}
+
+	if (!gconf_client_set_bool(client, MATCH, save_search.match, &err))
+		PRINT_WARN(err);
+
+	if (!gconf_client_set_bool(client, WRAP, save_search.wrap, &err))
+		PRINT_WARN(err);
+
+	if (!gconf_client_set_bool(client, CLOSE, save_search.close, &err))
+		PRINT_WARN(err);
 }
 

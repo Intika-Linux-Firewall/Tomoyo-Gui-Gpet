@@ -26,6 +26,7 @@
 
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
+#include <glib/gprintf.h>
 
 #include "gpet.h"
 
@@ -178,7 +179,8 @@ static void add_list_manager(generic_list_t *man)
 	gtk_widget_grab_focus(man->listview);
 }
 
-static void create_manager_view(GtkWidget *dialog, GtkWidget *listview)
+static void create_manager_view(GtkWidget *dialog, GtkWidget *toolbar,
+							GtkWidget *listview)
 {
 	GtkWidget	*scrolledwin;
 
@@ -188,6 +190,8 @@ static void create_manager_view(GtkWidget *dialog, GtkWidget *listview)
 	gtk_scrolled_window_set_shadow_type(
 		GTK_SCROLLED_WINDOW(scrolledwin), GTK_SHADOW_IN);
 
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
+					toolbar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
 					scrolledwin, TRUE, TRUE, 0);
 	gtk_container_add(GTK_CONTAINER(scrolledwin), listview);
@@ -251,6 +255,16 @@ static void cb_button(GtkButton *button, gpointer data)
 	gtk_widget_destroy(dialog);
 }
 
+static void cb_manager_entry_activate(GtkEntry *entry, GtkWidget *dialog)
+{
+	const gchar	*input = gtk_entry_get_text(entry);
+
+	if (!input || strcmp(input, "") == 0)
+		return;
+
+	gtk_dialog_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+}
+
 static void append_manager(GtkAction *action, other_t *data)
 {
 	GtkWidget		*dialog;
@@ -273,6 +287,8 @@ static void append_manager(GtkAction *action, other_t *data)
 		GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), hbox);
 
 	entry = gtk_entry_new();
+	g_signal_connect(G_OBJECT(entry) , "activate" ,
+			G_CALLBACK(cb_manager_entry_activate), dialog);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	g_object_set_data(G_OBJECT(entry), "parent", (gpointer)dialog);
 
@@ -369,6 +385,7 @@ void manager_main(transition_t *transition)
 {
 	other_t		data;
 	GtkWidget		*dialog;
+	GtkWidget		*toolbar;
 	GtkWidget		*listview;
 	gchar			*title;
 	gint			response;
@@ -381,9 +398,9 @@ void manager_main(transition_t *transition)
 			NULL);
 	g_free(title);
 
-	create_dialog_menu(dialog, &data);
+	toolbar = create_dialog_menu(dialog, &data);
 	listview = create_list_manager();
-	create_manager_view(dialog, listview);
+	create_manager_view(dialog, toolbar, listview);
 
 	data.dialog = dialog;
 	data.manager.listview = listview;
@@ -415,6 +432,25 @@ void manager_main(transition_t *transition)
 		transition->current_page = CCS_SCREEN_DOMAIN_LIST;
 }
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
+static void cnv_local_time(gchar *date, gchar *time)
+{
+	struct tm	t, *lt;
+	time_t		timet;
+
+	memset(&t, 0, sizeof(t));
+	sscanf(date, "%d/%d/%d", &(t.tm_year), &(t.tm_mon), &(t.tm_mday));
+	sscanf(time, "%d:%d:%d", &(t.tm_hour), &(t.tm_min), &(t.tm_sec));
+
+	t.tm_year -= 1900;
+	t.tm_mon--;
+	timet = timegm(&t);
+	lt = localtime(&timet);
+
+	g_sprintf(date, "%04d/%02d/%02d",
+				lt->tm_year+1900, lt->tm_mon+1, lt->tm_mday);
+	g_sprintf(time, "%02d:%02d:%02d", lt->tm_hour, lt->tm_min, lt->tm_sec);
+}
+
 static void get_disp_column(const char *data, gchar **head,
 				gchar **now_str, gchar **quota_str)
 {
@@ -427,19 +463,19 @@ static void get_disp_column(const char *data, gchar **head,
 	memset(name, 0, sizeof(name));
 	memset(date, 0, sizeof(date));
 	memset(time, 0, sizeof(time));
-	if ((cnt = sscanf(data, "Policy update: %u %s %s %s",
+	if ((cnt = sscanf(data, "Policy update: %u (%s %s %s)",
 	 &now, name, date, time)) >= 1) {
 		*head = "Policy update";
 	} else if ((cnt = sscanf(data,
-	 "Policy violation in learning mode: %u %s %s %s",
+	 "Policy violation in learning mode: %u (%s %s %s)",
 	 &now, name, date, time)) >= 1) {
 		*head = "Policy violation in learning mode";
 	} else if ((cnt = sscanf(data,
-	 "Policy violation in permissive mode: %u %s %s %s",
+	 "Policy violation in permissive mode: %u (%s %s %s)",
 	 &now, name, date, time)) >= 1) {
 		*head = "Policy violation in permissive mode";
 	} else if ((cnt = sscanf(data,
-	 "Policy violation in enforcing mode: %u %s %s %s",
+	 "Policy violation in enforcing mode: %u (%s %s %s)",
 	 &now, name, date, time)) >= 1) {
 		*head = "Policy violation in enforcing mode";
 	} else if ((cnt = sscanf(data,
@@ -467,10 +503,12 @@ static void get_disp_column(const char *data, gchar **head,
 		bQuota = FALSE;
 
 	*now_str = bNow ? g_strdup_printf("%u", now) : g_strdup("");
-	if (strlen(name))
+	if (strlen(name)) {
+		cnv_local_time(date, time);
 		*quota_str = g_strdup_printf("%s %s %s", name, date, time);
-	else
+	} else {
 		*quota_str = bQuota ? g_strdup_printf("%u", quota) : g_strdup("");
+	}
 }
 
 enum mem_column_pos {
@@ -584,7 +622,8 @@ static GtkWidget *create_list_memory(generic_list_t *mem)
 	return treeview;
 }
 
-static void create_memory_view(GtkWidget *dialog, GtkWidget *listview)
+static void create_memory_view(GtkWidget *dialog, GtkWidget *toolbar,
+						GtkWidget *listview)
 {
 	GtkWidget	*scrolledwin;
 
@@ -594,6 +633,8 @@ static void create_memory_view(GtkWidget *dialog, GtkWidget *listview)
 	gtk_scrolled_window_set_shadow_type(
 		GTK_SCROLLED_WINDOW(scrolledwin), GTK_SHADOW_IN);
 
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
+					toolbar, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
 					scrolledwin, TRUE, TRUE, 0);
 	gtk_container_add(GTK_CONTAINER(scrolledwin), listview);
@@ -623,6 +664,7 @@ void memory_main(transition_t *transition)
 {
 	other_t		data;
 	GtkWidget		*dialog;
+	GtkWidget		*toolbar;
 	GtkWidget		*listview;
 	gchar			*title;
 	gint			response;
@@ -631,18 +673,19 @@ void memory_main(transition_t *transition)
 	dialog = gtk_dialog_new_with_buttons(title,
 			GTK_WINDOW(transition->window),
 			GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
 			GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
+			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+			GTK_STOCK_OK, GTK_RESPONSE_OK,
 			NULL);
 	g_free(title);
 
 	data.dialog = dialog;
 	data.memory.count = 0;
 	data.memory.list = NULL;
-	create_dialog_menu(dialog, &data);
+	toolbar = create_dialog_menu(dialog, &data);
 	listview = create_list_memory(&(data.memory));
 	data.memory.listview = listview;
-	create_memory_view(dialog, listview);
+	create_memory_view(dialog, toolbar, listview);
 
 	add_list_memory(&(data.memory));
 
@@ -655,14 +698,20 @@ void memory_main(transition_t *transition)
 	gtk_widget_set_name(dialog, "GpetStatisticsDialog");	// .gpetrc
 	gtk_widget_show_all(dialog);
 
+retry_memory:
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
-	if (response == GTK_RESPONSE_APPLY) {
+	if (response == GTK_RESPONSE_APPLY || response == GTK_RESPONSE_OK) {
 		char	*err_buff = NULL;
 		DEBUG_PRINT("Apply button was pressed.\n");
 		if (set_memory(data.memory.list,
 				data.memory.count, &err_buff)) {
 			g_warning("%s", err_buff);
 			free(err_buff);
+		}
+
+		if (response == GTK_RESPONSE_APPLY) {
+			add_list_memory(&(data.memory));
+			goto retry_memory;
 		}
 	} else {
 		DEBUG_PRINT("Another response was recieved.\n");
