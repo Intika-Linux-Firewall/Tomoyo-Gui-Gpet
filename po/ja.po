@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-06-10 13:56+0900\n"
-"PO-Revision-Date: 2011-06-10 13:56+0900\n"
+"POT-Creation-Date: 2011-09-05 17:05+0900\n"
+"PO-Revision-Date: 2011-09-05 17:05+0900\n"
 "Last-Translator: Yoshihiro Kusuno <yocto@users.sourceforge.jp>\n"
 "Language-Team: Japanese < >\n"
 "Language: \n"
@@ -17,44 +17,44 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/gpet.c:1193
+#: ../src/gpet.c:1239
 msgid "offline"
 msgstr "オフライン"
 
-#: ../src/gpet.c:1193
+#: ../src/gpet.c:1239
 msgid "nework"
 msgstr "ネットワーク"
 
-#: ../src/gpet.c:1193
+#: ../src/gpet.c:1239
 msgid "online"
 msgstr "オンライン"
 
-#: ../src/gpet.c:1237 ../src/gpet.c:1242 ../src/menu.c:79
+#: ../src/gpet.c:1284 ../src/gpet.c:1289 ../src/menu.c:79
 msgid "Statistics"
 msgstr "統計情報"
 
-#: ../src/gpet.c:1248 ../src/gpet.c:1252 ../src/gpet.c:1257
+#: ../src/gpet.c:1295 ../src/gpet.c:1299 ../src/gpet.c:1304
 msgid "Manager Policy"
 msgstr "マネージャ 一覧"
 
-#: ../src/gpet.c:1263 ../src/gpet.c:1267 ../src/gpet.c:1272
+#: ../src/gpet.c:1310 ../src/gpet.c:1314 ../src/gpet.c:1319
 msgid "Domain Policy Editor"
 msgstr "ドメインポリシーエディタ"
 
-#: ../src/gpet.c:1443 ../src/gpet.c:1468
+#: ../src/gpet.c:1492 ../src/gpet.c:1517
 msgid "gpet"
 msgstr "ｇｐｅｔ"
 
 #. create tab
-#: ../src/gpet.c:1575 ../src/menu.c:469
+#: ../src/gpet.c:1642 ../src/menu.c:473
 msgid "Domain Transition"
 msgstr "ドメイン遷移 一覧"
 
-#: ../src/gpet.c:1576
+#: ../src/gpet.c:1643
 msgid "Exception Policy"
 msgstr "例外ポリシー 一覧"
 
-#: ../src/gpet.c:1577
+#: ../src/gpet.c:1644
 msgid "Profile"
 msgstr "プロファイル 一覧"
 
@@ -190,11 +190,11 @@ msgstr "ACLウィンドウ切離し"
 msgid "Detach ACL window"
 msgstr "ドメインポリシーを別ウィンドウで表示します。"
 
-#: ../src/menu.c:466
+#: ../src/menu.c:470
 msgid "Process State"
 msgstr "プロセス 一覧"
 
-#: ../src/menu.c:748
+#: ../src/menu.c:774
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the %d selected "
@@ -203,7 +203,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行の例外ポリシーを<b>削除</"
 "b>します。</span>"
 
-#: ../src/menu.c:751
+#: ../src/menu.c:777
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the selected exception "
@@ -212,7 +212,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した 例外ポリシーを<b>削除</b>しま"
 "す。</span>"
 
-#: ../src/menu.c:768
+#: ../src/menu.c:794
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the %d selected domains?"
@@ -221,7 +221,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行のドメインを<b>削除</b>し"
 "ます。</span>"
 
-#: ../src/menu.c:771
+#: ../src/menu.c:797
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the selected domain?</"
@@ -230,7 +230,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した ドメインを<b>削除</b>します。"
 "</span>"
 
-#: ../src/menu.c:790
+#: ../src/menu.c:816
 #, c-format
 msgid ""
 "<span foreground='blue' size='x-large'><b>Delete</b> the %d selected "
@@ -239,7 +239,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行のポリシーを<b>削除</b>し"
 "ます。</span>"
 
-#: ../src/menu.c:793
+#: ../src/menu.c:819
 #, c-format
 msgid ""
 "<span foreground='blue' size='x-large'><b>Delete</b> the selected policy?</"
@@ -248,41 +248,45 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した ポリシーを<b>削除</b>します。"
 "</span>"
 
-#: ../src/menu.c:1027
+#: ../src/menu.c:1053
 msgid "Add Domain"
 msgstr "ドメインを追加します。"
 
-#: ../src/menu.c:1034
+#: ../src/menu.c:1060
 msgid "Add Acl"
 msgstr "ドメインに対するアクセス許可を追加します。"
 
-#: ../src/menu.c:1046
+#: ../src/menu.c:1072
 msgid "Add Exception"
 msgstr "例外ポリシーを追加します。"
 
-#: ../src/menu.c:1054
+#: ../src/menu.c:1080
 msgid "Add Profile (0 - 255)"
 msgstr "プロファイルを追加します。 (0 - 255)"
 
-#: ../src/menu.c:1196
+#: ../src/menu.c:1088
+msgid "Add Namespace"
+msgstr "ポリシー名前空間を追加します。"
+
+#: ../src/menu.c:1230
 msgid "Profile list"
 msgstr "プロファイルを選択します。"
 
-#: ../src/menu.c:1271
+#: ../src/menu.c:1305
 msgid "Profile Edit"
 msgstr "プロファイルを変更します。"
 
-#: ../src/menu.c:1355
+#: ../src/menu.c:1389
 msgid "Yoshihiro Kusuno <yocto@users.sourceforge.jp>"
-msgstr "楠野　佳宏 <yocto@users.sourceforge.jp>"
+msgstr "クスノ <yocto@users.sourceforge.jp>"
 
-#: ../src/menu.c:1356
+#: ../src/menu.c:1390
 msgid "ccstools --- kumaneko san"
 msgstr "ccstools --- 熊猫さん"
 
-#: ../src/menu.c:1358
+#: ../src/menu.c:1392
 msgid "Yoshihiro Kusuno"
-msgstr "楠野　佳宏"
+msgstr "クスノ"
 
 #: ../src/other.c:49
 msgid "Edit the selected line"

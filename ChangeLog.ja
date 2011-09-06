@@ -1,3 +1,14 @@
+2011/09/10  yocto  <yocto@users.sourceforge.jp>
+
+ 0.4 Released
+
+ * ベースとなるccs-editpolicyをccstools 1.8.2p4 20110820版 に変更
+
+ * ポリシー名前空間対応
+
+ * バグ修正
+
+
 2011/06/18  yocto  <yocto@users.sourceforge.jp>
 
  0.3 Released

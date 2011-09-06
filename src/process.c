@@ -181,7 +181,7 @@ static void cb_selection_proc(GtkTreeSelection *selection,
 
 	get_process_acl_list(index,
 		&(transition->acl.list), &(transition->acl.count));
-	add_list_data(&(transition->acl), TRUE);
+	add_list_data(&(transition->acl), CCS_SCREEN_ACL_LIST);
 
 	view_cursor_set(transition->acl.listview, path, column);
 

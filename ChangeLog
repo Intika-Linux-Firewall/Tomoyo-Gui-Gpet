@@ -1,3 +1,14 @@
+2011/09/10  yocto  <yocto@users.sourceforge.jp>
+
+ 0.4 Released
+
+ * The version of ccstools used was changed from 1.8.1 to 1.8.2p4.
+
+ * Support policy namespace.
+
+ * Fix several bugs.
+
+
 2011/06/18  yocto  <yocto@users.sourceforge.jp>
 
  0.3 Released

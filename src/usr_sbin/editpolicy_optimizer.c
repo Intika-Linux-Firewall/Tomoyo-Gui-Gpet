@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.1   2011/04/01
+ * Version: 1.8.2+   2011/06/26
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -59,17 +59,20 @@ static struct ccs_number_group_entry *ccs_find_number_group
 (const char *group_name);
 
 /**
- * ccs_find_path_group - Find "path_group" entry.
+ * ccs_find_path_group_ns - Find "path_group" entry.
  *
+ * @ns:         Pointer to "const struct ccs_path_info".
  * @group_name: Name of path group.
  *
  * Returns pointer to "struct ccs_path_group_entry" if found, NULL otherwise.
  */
-struct ccs_path_group_entry *ccs_find_path_group(const char *group_name)
+struct ccs_path_group_entry *ccs_find_path_group_ns
+(const struct ccs_path_info *ns, const char *group_name)
 {
 	int i;
 	for (i = 0; i < ccs_path_group_list_len; i++) {
-		if (!strcmp(group_name,
+		if (!ccs_pathcmp(ccs_path_group_list[i].ns, ns) &&
+		    !strcmp(group_name,
 			    ccs_path_group_list[i].group_name->name))
 			return &ccs_path_group_list[i];
 	}
@@ -119,7 +122,7 @@ static _Bool ccs_compare_path(const char *sarg, const char *darg)
 		/* Pathname component. */
 		return ccs_path_matches_pattern(&d, &s);
 	/* path_group component. */
-	group = ccs_find_path_group(s.name + 1);
+	group = ccs_find_path_group_ns(ccs_current_ns, s.name + 1);
 	if (!group)
 		return false;
 	for (i = 0; i < group->member_name_len; i++) {
@@ -237,8 +240,10 @@ static void ccs_tokenize(char *buffer, char *w[5],
 		if (!cp)
 			return;
 		if (index == CCS_DIRECTIVE_IPC_SIGNAL && i == 1 &&
-		    !strncmp(buffer, "<kernel>", 8)) {
-			cp = buffer + 8;
+		    ccs_domain_def(buffer)) {
+			cp = strchr(buffer, ' ');
+			if (!cp)
+				return;
 			while (*cp) {
 				if (*cp++ != ' ' || *cp++ == '/')
 					continue;
@@ -318,7 +323,10 @@ static _Bool ccs_compare_number(const char *sarg, const char *darg)
 void ccs_editpolicy_optimize(const int current)
 {
 	char *cp;
+	const bool is_exception_list =
+		ccs_current_screen == CCS_SCREEN_EXCEPTION_LIST;
 	enum ccs_editpolicy_directives s_index;
+	enum ccs_editpolicy_directives s_index2;
 	int index;
 	char *s[5];
 	char *d[5];
@@ -327,26 +335,44 @@ void ccs_editpolicy_optimize(const int current)
 	s_index = ccs_gacl_list[current].directive;
 	if (s_index == CCS_DIRECTIVE_NONE)
 		return;
+	/* Allow acl_group lines to be optimized. */
+	if (is_exception_list &&
+	    (s_index < CCS_DIRECTIVE_ACL_GROUP_000 ||
+	     s_index > CCS_DIRECTIVE_ACL_GROUP_255))
+		return;
 	cp = strdup(ccs_gacl_list[current].operand);
 	if (!cp)
 		return;
+	s_index2 = s_index;
+	if (is_exception_list)
+		s_index = ccs_find_directive(true, cp);
 	ccs_tokenize(cp, s, s_index);
 	ccs_get();
 	for (index = 0; index < ccs_list_item_count; index++) {
 		char *line;
-		const enum ccs_editpolicy_directives d_index =
+		enum ccs_editpolicy_directives d_index =
 			ccs_gacl_list[index].directive;
+		enum ccs_editpolicy_directives d_index2;
 		if (index == current)
 			/* Skip source. */
 			continue;
 		if (ccs_gacl_list[index].selected)
 			/* Dest already selected. */
 			continue;
-		else if (s_index != d_index)
+		else if (s_index == s_index2 && s_index != d_index)
+			/* Source and dest have different directive. */
+			continue;
+		else if (is_exception_list && s_index2 != d_index)
 			/* Source and dest have different directive. */
 			continue;
 		/* Source and dest have same directive. */
 		line = ccs_shprintf("%s", ccs_gacl_list[index].operand);
+		d_index2 = d_index;
+		if (is_exception_list)
+			d_index = ccs_find_directive(true, line);
+		if (s_index != d_index || s_index2 != d_index2)
+			/* Source and dest have different directive. */
+			continue;
 		ccs_tokenize(line, d, d_index);
 		/* Compare condition part. */
 		if (strcmp(s[4], d[4]))
@@ -478,8 +504,6 @@ static int ccs_add_address_group_entry(const char *group_name,
 	if (!ccs_correct_word(group_name))
 		return -EINVAL;
 	saved_group_name = ccs_savename(group_name);
-	if (!saved_group_name)
-		return -ENOMEM;
 	for (i = 0; i < ccs_address_group_list_len; i++) {
 		group = &ccs_address_group_list[i];
 		if (saved_group_name != group->group_name)
@@ -501,22 +525,17 @@ static int ccs_add_address_group_entry(const char *group_name,
 	if (is_delete)
 		return -ENOENT;
 	if (i == ccs_address_group_list_len) {
-		void *vp;
-		vp = realloc(ccs_address_group_list,
-			     (ccs_address_group_list_len + 1) *
-			     sizeof(struct ccs_address_group_entry));
-		if (!vp)
-			ccs_out_of_memory();
-		ccs_address_group_list = vp;
+		ccs_address_group_list =
+			ccs_realloc(ccs_address_group_list,
+				    (ccs_address_group_list_len + 1) *
+				    sizeof(struct ccs_address_group_entry));
 		group = &ccs_address_group_list[ccs_address_group_list_len++];
 		memset(group, 0, sizeof(struct ccs_address_group_entry));
 		group->group_name = saved_group_name;
 	}
 	group->member_name =
-		realloc(group->member_name, (group->member_name_len + 1) *
-			sizeof(const struct ccs_ip_address_entry));
-	if (!group->member_name)
-		ccs_out_of_memory();
+		ccs_realloc(group->member_name, (group->member_name_len + 1) *
+			    sizeof(const struct ccs_ip_address_entry));
 	group->member_name[group->member_name_len++] = entry;
 	return 0;
 }
@@ -564,8 +583,6 @@ static int ccs_add_number_group_entry(const char *group_name,
 	if (!ccs_correct_word(group_name))
 		return -EINVAL;
 	saved_group_name = ccs_savename(group_name);
-	if (!saved_group_name)
-		return -ENOMEM;
 	for (i = 0; i < ccs_number_group_list_len; i++) {
 		group = &ccs_number_group_list[i];
 		if (saved_group_name != group->group_name)
@@ -587,22 +604,17 @@ static int ccs_add_number_group_entry(const char *group_name,
 	if (is_delete)
 		return -ENOENT;
 	if (i == ccs_number_group_list_len) {
-		void *vp;
-		vp = realloc(ccs_number_group_list,
-			     (ccs_number_group_list_len + 1) *
-			     sizeof(struct ccs_number_group_entry));
-		if (!vp)
-			ccs_out_of_memory();
-		ccs_number_group_list = vp;
+		ccs_number_group_list =
+			ccs_realloc(ccs_number_group_list,
+				    (ccs_number_group_list_len + 1) *
+				    sizeof(struct ccs_number_group_entry));
 		group = &ccs_number_group_list[ccs_number_group_list_len++];
 		memset(group, 0, sizeof(struct ccs_number_group_entry));
 		group->group_name = saved_group_name;
 	}
-	group->member_name = realloc(group->member_name,
-				     (group->member_name_len + 1) *
-				     sizeof(const struct ccs_number_entry));
-	if (!group->member_name)
-		ccs_out_of_memory();
+	group->member_name =
+		ccs_realloc(group->member_name, (group->member_name_len + 1) *
+			    sizeof(const struct ccs_number_entry));
 	group->member_name[group->member_name_len++] = entry;
 	return 0;
 }

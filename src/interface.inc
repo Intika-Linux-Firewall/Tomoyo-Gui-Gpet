@@ -19,8 +19,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor Boston, MA 02110-1301,  USA
  */
+static void ccs_out_of_memory(void)
+{
+	fprintf(stderr, "Out of memory. Aborted.\n");
+	exit(1);
+}
 
-int get_domain_policy(struct ccs_domain_policy *dp, int *count)
+int get_domain_policy(struct ccs_domain_policy3 *dp, int *count)
 {
 	int	result = 1;
 
@@ -52,7 +57,7 @@ int add_domain(char *input, char **err_buff)
 	return result;
 }
 
-int set_profile(struct ccs_domain_policy *dp,
+int set_profile(struct ccs_domain_policy3 *dp,
 				char *profile, char **err_buff)
 {
 	int	dummy = 0, result = 0;
@@ -112,19 +117,25 @@ static void generic_acl_copy(struct ccs_generic_acl **src, int src_cnt,
 	}
 }
 
-int get_acl_list(struct ccs_domain_policy *dp, int current,
+const char *get_domain_name(const struct ccs_domain_policy3 *dp,
+				const int index)
+{
+	return dp->list[index].domainname->name;
+}
+
+int get_acl_list(struct ccs_domain_policy3 *dp, int current,
 			struct ccs_generic_acl **ga, int *count)
 {
 	int	result = 0;
 
 	ccs_dp = *dp;
-	if (ccs_initializer_source(current)) {
+	if (ccs_jump_source(current)) {
 		*count = 0;
 	} else if (ccs_deleted_domain(current)) {
 		*count = 0;
 	} else {
 		free(ccs_current_domain);
-		ccs_current_domain = strdup(ccs_domain_name(dp, current));
+		ccs_current_domain = strdup(get_domain_name(dp, current));
 		if (!ccs_current_domain)
 			ccs_out_of_memory();
 		else {
@@ -178,14 +189,13 @@ int get_optimize_acl_list(int current, struct ccs_generic_acl **ga, int count)
 	return 0;
 }
 
-int add_acl_list(struct ccs_domain_policy *dp, int current,
+int add_acl_list(struct ccs_domain_policy3 *dp, int current,
 			char *input, char **err_buff)
 {
 	int	result = 0;
 
 	ccs_dp = *dp;
-	if (ccs_initializer_source(current) ||
-		ccs_deleted_domain(current)) {
+	if (ccs_jump_source(current) || ccs_deleted_domain(current)) {
 		*dp = ccs_dp;
 		return 1;
 	}
@@ -286,6 +296,54 @@ int set_profile_level(int index, const char *input, char **err_buff)
 	ccs_gacl_list[index].selected = 1;
 	gpet_line = (char *)input;
 	ccs_set_level(0);
+	gpet_line = NULL;
+
+	if (ccs_last_error) {
+		(*err_buff) = strdup(ccs_last_error);
+		free(ccs_last_error);
+		ccs_last_error = NULL;
+		result = 1;
+	}
+
+	return result;
+}
+
+int get_namespace(struct ccs_generic_acl **ga, int *count)
+{
+	struct ccs_generic_acl *orig_generic_acl_list = NULL;
+	int		orig_generic_acl_list_count = 0;
+	int		result;
+
+	generic_acl_copy(&ccs_gacl_list,
+				ccs_gacl_list_count,
+			&orig_generic_acl_list,
+				orig_generic_acl_list_count);
+	orig_generic_acl_list_count = ccs_gacl_list_count;
+
+	ccs_current_screen = CCS_SCREEN_NS_LIST;
+	result = ccs_generic_list_loop();
+
+	generic_acl_copy(&ccs_gacl_list,
+				ccs_gacl_list_count,
+				ga, *count);
+	*count = ccs_gacl_list_count;
+
+	generic_acl_copy(&orig_generic_acl_list,
+				orig_generic_acl_list_count,
+			&ccs_gacl_list,
+				 ccs_gacl_list_count);
+	ccs_gacl_list_count = orig_generic_acl_list_count;
+
+	return result;
+}
+
+int add_namespace(char *input, char **err_buff)
+{
+	int	result = 0;
+
+	ccs_current_screen = CCS_SCREEN_NS_LIST;
+	gpet_line = input;
+	ccs_add_entry();
 	gpet_line = NULL;
 
 	if (ccs_last_error) {
@@ -411,7 +469,7 @@ int set_memory(struct ccs_generic_acl *ga, int count, char **err_buff)
 	return result;
 }
 
-int delete_domain_policy(struct ccs_domain_policy *dp, char **err_buff)
+int delete_domain_policy(struct ccs_domain_policy3 *dp, char **err_buff)
 {
 	int	result = 0;
 
@@ -431,7 +489,7 @@ int delete_domain_policy(struct ccs_domain_policy *dp, char **err_buff)
 	return result;
 }
 
-int delete_acl_policy(struct ccs_domain_policy *dp, char **err_buff,
+int delete_acl_policy(struct ccs_domain_policy3 *dp, char **err_buff,
 				struct ccs_generic_acl *ga, int count)
 {
 	int	result = 0;
@@ -456,7 +514,7 @@ int delete_acl_policy(struct ccs_domain_policy *dp, char **err_buff,
 	return result;
 }
 
-int delete_exp_policy(struct ccs_domain_policy *dp, char **err_buff,
+int delete_exp_policy(struct ccs_domain_policy3 *dp, char **err_buff,
 				struct ccs_generic_acl *ga, int count)
 {
 	int	result = 0;
@@ -528,4 +586,19 @@ const char *get_policy_dir(void)
 const char *get_domain_last_name(const int index)
 {
 	return ccs_get_last_name(index);
+}
+
+int get_find_target_domain(const int index)
+{
+	return ccs_find_target_domain(index);
+}
+
+const char *get_ns_name(void)
+{
+	return ccs_current_ns->name;
+}
+
+void put_ns_name(const char *namespace)
+{
+	ccs_current_ns = ccs_savename(namespace);
 }

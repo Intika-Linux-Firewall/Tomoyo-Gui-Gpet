@@ -1,4 +1,4 @@
-gpet 0.3                                                2011-06-18
+gpet 0.4                                                2011-09-10
 
 gpet (Gui Policy Editor for TOMOYO Linux)
     Build / Install / Run / Uninstall
@@ -8,9 +8,9 @@ $ sudo apt-get install gcc make libncurses-dev
 
 $ sudo apt-get install intltool libgtk2.0-dev libgconf2-dev
 
-$ tar xjvf gpet-0.3.tar.bz2
+$ tar xjvf gpet-0.4.tar.bz2
 
-$ cd gpet-0.3
+$ cd gpet-0.4
 $ ./configure --prefix /usr
 
 $ make

@@ -44,6 +44,7 @@ enum addentry_type {
 	ADDENTRY_EXCEPTION_LIST,
 	ADDENTRY_PROFILE_LIST,
 	ADDENTRY_MANAGER_LIST,
+	ADDENTRY_NAMESPACE_LIST,
 	ADDENTRY_NON
 };
 
@@ -58,13 +59,14 @@ typedef struct _transition_t {
 
 	GtkContainer		*container;
 
-	struct ccs_domain_policy	*dp;
+	struct ccs_domain_policy3	*dp;
 	int				domain_count;
 	generic_list_t		acl;	// ACL
 	GtkWidget			*acl_window;
 	gboolean			acl_detached;
 	generic_list_t		exp;	// exception
 	generic_list_t		prf;	// profile
+	generic_list_t		ns;	// namespace
 	task_list_t			tsk;	// Process
 	int				task_flag;	// 1:process
 							// 0:domain
@@ -93,17 +95,19 @@ typedef struct _transition_t {
 int ccs_main(int argc, char *argv[]);
 
 // interface.inc
-int get_domain_policy(struct ccs_domain_policy *dp, int *count);
+int get_domain_policy(struct ccs_domain_policy3 *dp, int *count);
 int add_domain(char *input, char **err_buff);
-int set_profile(struct ccs_domain_policy *dp,
+int set_profile(struct ccs_domain_policy3 *dp,
 				char *profile, char **err_buff);
 int get_task_list(struct ccs_task_entry **tsk, int *count);
-int get_acl_list(struct ccs_domain_policy *dp, int current,
+const char *get_domain_name(const struct ccs_domain_policy3 *dp,
+				const int index);
+int get_acl_list(struct ccs_domain_policy3 *dp, int current,
 			struct ccs_generic_acl **ga, int *count);
 int get_process_acl_list(int current,
 				struct ccs_generic_acl **ga, int *count);
 int get_optimize_acl_list(int current, struct ccs_generic_acl **ga, int count);
-int add_acl_list(struct ccs_domain_policy *dp, int current,
+int add_acl_list(struct ccs_domain_policy3 *dp, int current,
 			char *input, char **err_buff);
 const char *get_transition_name(enum ccs_transition_type type);
 int get_exception_policy(struct ccs_generic_acl **ga, int *count);
@@ -111,14 +115,16 @@ int add_exception_policy(char *input, char **err_buff);
 int get_profile(struct ccs_generic_acl **ga, int *count);
 int add_profile(char *input, char **err_buff);
 int set_profile_level(int index, const char *input, char **err_buff);
+int get_namespace(struct ccs_generic_acl **ga, int *count);
+int add_namespace(char *input, char **err_buff);
 int get_manager(struct ccs_generic_acl **ga, int *count);
 int add_manager(char *input, char **err_buff);
 int get_memory(struct ccs_generic_acl **ga, int *count);
 int set_memory(struct ccs_generic_acl *ga, int count, char **err_buff);
-int delete_domain_policy(struct ccs_domain_policy *dp, char **err_buff);
-int delete_acl_policy(struct ccs_domain_policy *dp, char **err_buff,
+int delete_domain_policy(struct ccs_domain_policy3 *dp, char **err_buff);
+int delete_acl_policy(struct ccs_domain_policy3 *dp, char **err_buff,
 				struct ccs_generic_acl *ga, int count);
-int delete_exp_policy(struct ccs_domain_policy *dp, char **err_buff,
+int delete_exp_policy(struct ccs_domain_policy3 *dp, char **err_buff,
 				struct ccs_generic_acl *ga, int count);
 int delete_manager_policy(
 		struct ccs_generic_acl *ga, int count, char **err_buff);
@@ -127,11 +133,15 @@ int is_network(void);
 char *get_remote_ip(char *str_ip);
 const char *get_policy_dir(void);
 const char *get_domain_last_name(const int index);
+int get_find_target_domain(const int index);
+const char *get_ns_name(void);
+void put_ns_name(const char *namespace);
 
 // gpet.c
 gchar *decode_from_octal_str(const char *name);
-void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp);
-void add_list_data(generic_list_t *generic, gboolean alias_flag);
+void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy3 *dp);
+void add_list_data(generic_list_t *generic,
+				enum ccs_screen_type current_page);
 gint get_current_domain_index(transition_t *transition);
 gchar *get_alias_and_operand(GtkWidget *view, gboolean alias_flag);
 void set_position_addentry(transition_t *transition, GtkTreePath **path);
@@ -168,6 +178,7 @@ void read_config(transition_t *tran);
 void write_config(transition_t *tran);
 
 // other.c
+gboolean namespace_main(transition_t *transition);
 void manager_main(transition_t *transition);
 void memory_main(transition_t *transition);
 
