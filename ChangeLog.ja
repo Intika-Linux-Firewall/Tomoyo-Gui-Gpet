@@ -2,6 +2,8 @@
 
  0.4 Released
 
+ * TOMOYO Linux 2.4 対応
+
  * ベースとなるccs-editpolicyをccstools 1.8.2p4 20110820版 に変更
 
  * ポリシー名前空間対応

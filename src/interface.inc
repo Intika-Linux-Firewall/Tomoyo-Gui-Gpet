@@ -559,12 +559,12 @@ int delete_manager_policy(
 	return result;
 }
 
-int is_offline(void)
+_Bool is_offline(void)
 {
 	return ccs_offline_mode;
 }
 
-int is_network(void)
+_Bool is_network(void)
 {
 	return ccs_network_mode;
 }
@@ -601,4 +601,17 @@ const char *get_ns_name(void)
 void put_ns_name(const char *namespace)
 {
 	ccs_current_ns = ccs_savename(namespace);
+}
+
+/*-------+---------+---------+---------+---------+---------+---------+--------*/
+static _Bool gpet_is_ccs_flag;
+static void set_ccs_flag(void)
+{
+//	if (!is_offline() && !is_network())
+		gpet_is_ccs_flag = chdir(TOMOYO_PROC_POLICY_DIR) ? true : false;
+}
+
+_Bool is_ccs(void)
+{
+	return gpet_is_ccs_flag;
 }

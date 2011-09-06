@@ -128,14 +128,15 @@ int delete_exp_policy(struct ccs_domain_policy3 *dp, char **err_buff,
 				struct ccs_generic_acl *ga, int count);
 int delete_manager_policy(
 		struct ccs_generic_acl *ga, int count, char **err_buff);
-int is_offline(void);
-int is_network(void);
+_Bool is_offline(void);
+_Bool is_network(void);
 char *get_remote_ip(char *str_ip);
 const char *get_policy_dir(void);
 const char *get_domain_last_name(const int index);
 int get_find_target_domain(const int index);
 const char *get_ns_name(void);
 void put_ns_name(const char *namespace);
+_Bool is_ccs(void);
 
 // gpet.c
 gchar *decode_from_octal_str(const char *name);

@@ -3563,6 +3563,7 @@ static void ccs_save_offline(void)
 }
 
 #ifdef __GPET	/* gpet */
+static void set_ccs_flag(void);
 int gpet_main(void);
 int ccs_main(int argc, char *argv[])
 #else
@@ -3570,6 +3571,9 @@ int main(int argc, char *argv[])
 #endif	/* gpet */
 {
 	ccs_parse_args(argc, argv);
+#ifdef __GPET	/* gpet */
+	set_ccs_flag();
+#endif	/* gpet */
 	ccs_editpolicy_init_keyword_map();
 	if (ccs_offline_mode)
 		ccs_load_offline();

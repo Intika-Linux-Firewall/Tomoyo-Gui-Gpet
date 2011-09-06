@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-09-05 17:05+0900\n"
-"PO-Revision-Date: 2011-09-05 17:05+0900\n"
+"POT-Creation-Date: 2011-09-06 23:33+0900\n"
+"PO-Revision-Date: 2011-09-06 23:33+0900\n"
 "Last-Translator: Yoshihiro Kusuno <yocto@users.sourceforge.jp>\n"
 "Language-Team: Japanese < >\n"
 "Language: \n"
@@ -194,7 +194,7 @@ msgstr "ドメインポリシーを別ウィンドウで表示します。"
 msgid "Process State"
 msgstr "プロセス 一覧"
 
-#: ../src/menu.c:774
+#: ../src/menu.c:776
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the %d selected "
@@ -203,7 +203,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行の例外ポリシーを<b>削除</"
 "b>します。</span>"
 
-#: ../src/menu.c:777
+#: ../src/menu.c:779
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the selected exception "
@@ -212,7 +212,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した 例外ポリシーを<b>削除</b>しま"
 "す。</span>"
 
-#: ../src/menu.c:794
+#: ../src/menu.c:796
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the %d selected domains?"
@@ -221,7 +221,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行のドメインを<b>削除</b>し"
 "ます。</span>"
 
-#: ../src/menu.c:797
+#: ../src/menu.c:799
 #, c-format
 msgid ""
 "<span foreground='red' size='x-large'><b>Delete</b> the selected domain?</"
@@ -230,7 +230,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した ドメインを<b>削除</b>します。"
 "</span>"
 
-#: ../src/menu.c:816
+#: ../src/menu.c:818
 #, c-format
 msgid ""
 "<span foreground='blue' size='x-large'><b>Delete</b> the %d selected "
@@ -239,7 +239,7 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した %d行のポリシーを<b>削除</b>し"
 "ます。</span>"
 
-#: ../src/menu.c:819
+#: ../src/menu.c:821
 #, c-format
 msgid ""
 "<span foreground='blue' size='x-large'><b>Delete</b> the selected policy?</"
@@ -248,43 +248,43 @@ msgstr ""
 "<span foreground='red' size='x-large'>選択した ポリシーを<b>削除</b>します。"
 "</span>"
 
-#: ../src/menu.c:1053
+#: ../src/menu.c:1055
 msgid "Add Domain"
 msgstr "ドメインを追加します。"
 
-#: ../src/menu.c:1060
+#: ../src/menu.c:1062
 msgid "Add Acl"
 msgstr "ドメインに対するアクセス許可を追加します。"
 
-#: ../src/menu.c:1072
+#: ../src/menu.c:1074
 msgid "Add Exception"
 msgstr "例外ポリシーを追加します。"
 
-#: ../src/menu.c:1080
+#: ../src/menu.c:1082
 msgid "Add Profile (0 - 255)"
 msgstr "プロファイルを追加します。 (0 - 255)"
 
-#: ../src/menu.c:1088
+#: ../src/menu.c:1090
 msgid "Add Namespace"
 msgstr "ポリシー名前空間を追加します。"
 
-#: ../src/menu.c:1230
+#: ../src/menu.c:1232
 msgid "Profile list"
 msgstr "プロファイルを選択します。"
 
-#: ../src/menu.c:1305
+#: ../src/menu.c:1307
 msgid "Profile Edit"
 msgstr "プロファイルを変更します。"
 
-#: ../src/menu.c:1389
+#: ../src/menu.c:1391
 msgid "Yoshihiro Kusuno <yocto@users.sourceforge.jp>"
-msgstr "クスノ <yocto@users.sourceforge.jp>"
+msgstr "クスノ　<yocto@users.sourceforge.jp>"
 
-#: ../src/menu.c:1390
+#: ../src/menu.c:1392
 msgid "ccstools --- kumaneko san"
 msgstr "ccstools --- 熊猫さん"
 
-#: ../src/menu.c:1392
+#: ../src/menu.c:1394
 msgid "Yoshihiro Kusuno"
 msgstr "クスノ"
 

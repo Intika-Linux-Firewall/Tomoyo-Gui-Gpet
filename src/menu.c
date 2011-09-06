@@ -1404,7 +1404,7 @@ static void show_about_dialog(void)
 	gtk_about_dialog_set_copyright(about,
 				"Copyright(C) 2010,2011 TOMOYO Linux Project");
 	gtk_about_dialog_set_comments(about,
-				"Gui Policy Editor for TOMOYO Linux 1.8.2"
+				"Gui Policy Editor for TOMOYO Linux 2.4 , 1.8.2"
 				" or AKARI 1.0.17"
 				"\n(based on ccs-editpolicy:ccstools)");
 	gtk_about_dialog_set_website(about, "http://sourceforge.jp/projects/gpet/");

@@ -51,6 +51,36 @@
 
 /***** CONSTANTS DEFINITION START *****/
 
+#ifdef __GPET
+_Bool is_ccs(void);
+#define CCS_PROC_POLICY_DIR    "/proc/ccs/"
+#define TOMOYO_PROC_POLICY_DIR "/sys/kernel/security/tomoyo/"
+
+#define CCS_PROC_POLICY_DOMAIN_POLICY \
+		is_ccs() ? "/proc/ccs/domain_policy" : \
+				"/sys/kernel/security/tomoyo/domain_policy"
+#define CCS_PROC_POLICY_EXCEPTION_POLICY \
+		is_ccs() ? "/proc/ccs/exception_policy" : \
+				"/sys/kernel/security/tomoyo/exception_policy"
+#define CCS_PROC_POLICY_AUDIT \
+		is_ccs() ? "/proc/ccs/audit" : \
+				"/sys/kernel/security/tomoyo/audit"
+#define CCS_PROC_POLICY_MANAGER \
+		is_ccs() ? "/proc/ccs/manager" : \
+				"/sys/kernel/security/tomoyo/manager"
+#define CCS_PROC_POLICY_STAT \
+		is_ccs() ? "/proc/ccs/stat" : \
+				"/sys/kernel/security/tomoyo/stat"
+#define CCS_PROC_POLICY_PROCESS_STATUS \
+		is_ccs() ? "/proc/ccs/.process_status" : \
+				"/sys/kernel/security/tomoyo/.process_status"
+#define CCS_PROC_POLICY_PROFILE \
+		is_ccs() ? "/proc/ccs/profile" : \
+				"/sys/kernel/security/tomoyo/profile"
+#define CCS_PROC_POLICY_QUERY \
+		is_ccs() ? "/proc/ccs/query" : \
+				"/sys/kernel/security/tomoyo/query"
+#else
 #define CCS_PROC_POLICY_DIR              "/proc/ccs/"
 #define CCS_PROC_POLICY_DOMAIN_POLICY    "/proc/ccs/domain_policy"
 #define CCS_PROC_POLICY_EXCEPTION_POLICY "/proc/ccs/exception_policy"
@@ -60,6 +90,7 @@
 #define CCS_PROC_POLICY_PROCESS_STATUS   "/proc/ccs/.process_status"
 #define CCS_PROC_POLICY_PROFILE          "/proc/ccs/profile"
 #define CCS_PROC_POLICY_QUERY            "/proc/ccs/query"
+#endif /* __GPET */
 
 /***** CONSTANTS DEFINITION END *****/
 
