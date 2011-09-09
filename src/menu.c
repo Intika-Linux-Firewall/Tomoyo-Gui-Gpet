@@ -74,7 +74,7 @@ static GtkActionEntry entries[] = {
   {"Refresh", GTK_STOCK_REFRESH, N_("_Refresh"), "<control>R",
 	N_("Refresh to the latest information"), G_CALLBACK(refresh_transition)},
   {"Manager", GTK_STOCK_DND, N_("_Manager..."), "<control>M",
-	N_("Manager Profile Editor"), G_CALLBACK(manager_transition)},
+	N_("Manager Policy Editor"), G_CALLBACK(manager_transition)},
   {"Memory", GTK_STOCK_DND, N_("_Statistics..."), "<control>S",
 	N_("Statistics"), G_CALLBACK(memory_transition)},
 
@@ -1239,6 +1239,8 @@ static void set_domain(transition_t *transition)
 	listview = create_list_profile();
 	g_signal_connect(G_OBJECT(listview), "row-activated",
 			G_CALLBACK(cb_profile_activate), dialog);
+	if (get_profile(&(transition->prf.list), &(transition->prf.count)))
+		return;
 	add_list_profile(listview, &(transition->prf));
 	view_cursor_set(listview, NULL, NULL);
 	gtk_container_add(

@@ -21,42 +21,46 @@ $ sudo make install
 
 
 *** Run ***
-$ sudo sh -c 'echo /usr/sbin/gpet >> /etc/ccs/manager.conf'
-$ sudo ccs-loadpolicy -m < /etc/ccs/manager.conf
+$ sudo sh -c 'echo /usr/sbin/gpet >> /etc/{ccs|tomoyo}/manager.conf'
+$ sudo {ccs|tomoyo}-loadpolicy -m < /etc/{ccs|tomoyo}/manager.conf
 
-$ sudo gpet [{policy_dir|remote_ip:remote_port}]
+$ sudo gpet [{policy_dir|remote_ip:remote_port}] [<namespace>]
 
 
  Ubuntu 11.04  disable overlay scrollbars.
    $ sudo sh -c "LIBOVERLAY_SCROLLBAR=0 gpet"
 
 
---- Option ---
+--- Options ---
 Font & color change
 $ cp /usr/share/doc/gpet/gpetrc.sample ~/.gpetrc
+Desktop Launcher
+$ cp /usr/share/doc/gpet/gpet.desktop ~/Desktop/
 
 
 *** Instll location ***
-|-- sbin
-|   `-- gpet
-`-- share
-    |-- doc
-    |   `-- gpet
-    |       |-- AUTHORS
-    |       |-- COPYING
-    |       |-- ChangeLog
-    |       |-- ChangeLog.ja
-    |       |-- INSTALL
-    |       |-- NEWS
-    |       |-- README
-    |       `-- gpetrc.sample
-    |-- gpet
-    |   `-- pixmaps
-    |       `-- tomoyo.png
-    `-- locale
-        `-- ja
-            `-- LC_MESSAGES
-                `-- gpet.mo
+/usr
+ |-- sbin
+ |   `-- gpet
+ `-- share
+     |-- doc
+     |   `-- gpet
+     |       |-- AUTHORS
+     |       |-- COPYING
+     |       |-- ChangeLog
+     |       |-- ChangeLog.ja
+     |       |-- INSTALL
+     |       |-- NEWS
+     |       |-- README
+     |       |-- gpet.desktop
+     |       `-- gpetrc.sample
+     |-- gpet
+     |   `-- pixmaps
+     |       `-- tomoyo.png
+     `-- locale
+         `-- ja
+             `-- LC_MESSAGES
+                 `-- gpet.mo
 
 
 *** Uninstall ***

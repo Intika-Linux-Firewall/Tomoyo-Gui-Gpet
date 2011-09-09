@@ -148,6 +148,8 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 		  transition_control->type == CCS_TRANSITION_CONTROL_KEEP ?
 		  "green" : "cyan";
 	} else if (is_jump_source(dp, *index)) {	/* initialize_domain */
+		g_free(name);
+		name = g_strdup(dp->list[*index].target->name);
 		redirect_index = get_find_target_domain(*index);
 		color = "blue";
 		if (redirect_index >= 0)

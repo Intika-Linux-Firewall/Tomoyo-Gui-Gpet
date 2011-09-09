@@ -53,9 +53,10 @@
 
 #ifdef __GPET
 _Bool is_ccs(void);
-#define CCS_PROC_POLICY_DIR    "/proc/ccs/"
 #define TOMOYO_PROC_POLICY_DIR "/sys/kernel/security/tomoyo/"
 
+#define CCS_PROC_POLICY_DIR \
+		is_ccs() ? "/proc/ccs/" : "/sys/kernel/security/tomoyo/"
 #define CCS_PROC_POLICY_DOMAIN_POLICY \
 		is_ccs() ? "/proc/ccs/domain_policy" : \
 				"/sys/kernel/security/tomoyo/domain_policy"

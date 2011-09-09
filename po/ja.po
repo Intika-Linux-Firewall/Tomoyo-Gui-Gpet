@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-09-06 23:33+0900\n"
-"PO-Revision-Date: 2011-09-06 23:33+0900\n"
+"POT-Creation-Date: 2011-09-09 20:43+0900\n"
+"PO-Revision-Date: 2011-09-09 20:43+0900\n"
 "Last-Translator: Yoshihiro Kusuno <yocto@users.sourceforge.jp>\n"
 "Language-Team: Japanese < >\n"
 "Language: \n"
@@ -17,44 +17,44 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/gpet.c:1239
+#: ../src/gpet.c:1241
 msgid "offline"
 msgstr "オフライン"
 
-#: ../src/gpet.c:1239
+#: ../src/gpet.c:1241
 msgid "nework"
 msgstr "ネットワーク"
 
-#: ../src/gpet.c:1239
+#: ../src/gpet.c:1241
 msgid "online"
 msgstr "オンライン"
 
-#: ../src/gpet.c:1284 ../src/gpet.c:1289 ../src/menu.c:79
+#: ../src/gpet.c:1286 ../src/gpet.c:1291 ../src/menu.c:79
 msgid "Statistics"
 msgstr "統計情報"
 
-#: ../src/gpet.c:1295 ../src/gpet.c:1299 ../src/gpet.c:1304
+#: ../src/gpet.c:1297 ../src/gpet.c:1301 ../src/gpet.c:1306
 msgid "Manager Policy"
 msgstr "マネージャ 一覧"
 
-#: ../src/gpet.c:1310 ../src/gpet.c:1314 ../src/gpet.c:1319
+#: ../src/gpet.c:1312 ../src/gpet.c:1316 ../src/gpet.c:1321
 msgid "Domain Policy Editor"
 msgstr "ドメインポリシーエディタ"
 
-#: ../src/gpet.c:1492 ../src/gpet.c:1517
+#: ../src/gpet.c:1494 ../src/gpet.c:1519
 msgid "gpet"
 msgstr "ｇｐｅｔ"
 
 #. create tab
-#: ../src/gpet.c:1642 ../src/menu.c:473
+#: ../src/gpet.c:1644 ../src/menu.c:473
 msgid "Domain Transition"
 msgstr "ドメイン遷移 一覧"
 
-#: ../src/gpet.c:1643
+#: ../src/gpet.c:1645
 msgid "Exception Policy"
 msgstr "例外ポリシー 一覧"
 
-#: ../src/gpet.c:1644
+#: ../src/gpet.c:1646
 msgid "Profile"
 msgstr "プロファイル 一覧"
 
@@ -159,7 +159,7 @@ msgid "_Manager..."
 msgstr "マネージャ...(_M)"
 
 #: ../src/menu.c:77
-msgid "Manager Profile Editor"
+msgid "Manager Policy Editor"
 msgstr "マネージャ 一覧"
 
 #: ../src/menu.c:78
@@ -272,19 +272,19 @@ msgstr "ポリシー名前空間を追加します。"
 msgid "Profile list"
 msgstr "プロファイルを選択します。"
 
-#: ../src/menu.c:1307
+#: ../src/menu.c:1309
 msgid "Profile Edit"
 msgstr "プロファイルを変更します。"
 
-#: ../src/menu.c:1391
+#: ../src/menu.c:1393
 msgid "Yoshihiro Kusuno <yocto@users.sourceforge.jp>"
 msgstr "クスノ　<yocto@users.sourceforge.jp>"
 
-#: ../src/menu.c:1392
+#: ../src/menu.c:1394
 msgid "ccstools --- kumaneko san"
 msgstr "ccstools --- 熊猫さん"
 
-#: ../src/menu.c:1394
+#: ../src/menu.c:1396
 msgid "Yoshihiro Kusuno"
 msgstr "クスノ"
 
