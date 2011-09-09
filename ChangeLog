@@ -1,3 +1,18 @@
+2011/09/09  yocto  <yocto@users.sourceforge.jp>
+
+ 0.4 Released
+
+ * Support TOMOYO Linux 2.4
+
+ * The version of ccstools used was changed from 1.8.1 to 1.8.2p4.
+
+ * Support policy namespace.
+
+ * Desktop shortcut sample [gpet.desktop] added
+     Usage example
+     cp /usr/share/doc/gpet/gpet.desktop ~/Desktop/
+
+
 2011/06/18  yocto  <yocto@users.sourceforge.jp>
 
  0.3 Released

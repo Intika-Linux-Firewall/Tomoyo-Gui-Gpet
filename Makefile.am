@@ -14,7 +14,8 @@ gpetdoc_DATA = \
 	ChangeLog.ja\
 	INSTALL\
 	NEWS\
-	gpetrc.sample
+	gpetrc.sample\
+	gpet.desktop
 
 
 INTLTOOL_FILES = intltool-extract.in \

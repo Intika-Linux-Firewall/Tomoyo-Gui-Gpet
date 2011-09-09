@@ -74,7 +74,7 @@ static GtkActionEntry entries[] = {
   {"Refresh", GTK_STOCK_REFRESH, N_("_Refresh"), "<control>R",
 	N_("Refresh to the latest information"), G_CALLBACK(refresh_transition)},
   {"Manager", GTK_STOCK_DND, N_("_Manager..."), "<control>M",
-	N_("Manager Profile Editor"), G_CALLBACK(manager_transition)},
+	N_("Manager Policy Editor"), G_CALLBACK(manager_transition)},
   {"Memory", GTK_STOCK_DND, N_("_Statistics..."), "<control>S",
 	N_("Statistics"), G_CALLBACK(memory_transition)},
 
@@ -231,6 +231,10 @@ void disp_statusbar(transition_t *transition, int scr)
 	case CCS_SCREEN_PROFILE_LIST :
 		status_str = g_strdup_printf("Entry[%d]",
 			transition->prf.count);
+		break;
+	case CCS_SCREEN_NS_LIST :
+		status_str = g_strdup_printf("Entry[%d]",
+			transition->ns.count);
 		break;
 	case CCS_SCREEN_DOMAIN_LIST :
 	case CCS_SCREEN_ACL_LIST :
@@ -498,18 +502,32 @@ void view_cursor_set(GtkWidget *view,
 	if (!path) {
 		path = gtk_tree_path_new_from_indices(0, -1);
 	}
-
+#if 0
 	{
 		gchar *path_str = gtk_tree_path_to_string(path);
 		DEBUG_PRINT("<%s> TreePath[%s]\n",
 			g_type_name(G_OBJECT_TYPE(view)), path_str);
 		g_free(path_str);
 	}
-	gtk_tree_view_set_cursor(
-			GTK_TREE_VIEW(view), path, column, FALSE);
+#endif
+	gtk_tree_view_set_cursor(GTK_TREE_VIEW(view), path, column, FALSE);
+	gtk_tree_path_free(path);
+	gtk_tree_view_get_cursor(GTK_TREE_VIEW(view), &path, &column);
+	if (!path) {
+		path = gtk_tree_path_new_from_indices(0, -1);
+		gtk_tree_view_set_cursor(
+				GTK_TREE_VIEW(view), path, column, FALSE);
+	}
 	gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(view), path, NULL,
 						TRUE, 0.5, 0.0);	// ksn
 	gtk_tree_path_free(path);
+}
+
+static void clear_acl_view(transition_t *transition)
+{
+	gtk_entry_set_text(GTK_ENTRY(transition->domainbar), get_ns_name());
+	transition->acl.count = 0;
+	add_list_data(&(transition->acl), CCS_SCREEN_ACL_LIST);
 }
 
 void refresh_transition(GtkAction *action, transition_t *transition)
@@ -527,7 +545,7 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 		if (get_exception_policy(
 		    &(transition->exp.list), &(transition->exp.count)))
 			break;
-		add_list_data(&(transition->exp), TRUE);
+		add_list_data(&(transition->exp), CCS_SCREEN_EXCEPTION_LIST);
 		set_position_addentry(transition, &path);
 		disp_statusbar(transition, CCS_SCREEN_EXCEPTION_LIST);
 		view_cursor_set(view, path, column);
@@ -540,9 +558,22 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 		if (get_profile(
 		    &(transition->prf.list), &(transition->prf.count)))
 			break;
-		add_list_data(&(transition->prf), FALSE);
+		add_list_data(&(transition->prf), CCS_SCREEN_PROFILE_LIST);
 		set_position_addentry(transition, &path);
 		disp_statusbar(transition, CCS_SCREEN_PROFILE_LIST);
+		view_cursor_set(view, path, column);
+		gtk_widget_grab_focus(view);
+		break;
+	case CCS_SCREEN_NS_LIST :
+		view = transition->ns.listview;
+		gtk_tree_view_get_cursor(GTK_TREE_VIEW(view),
+							&path, &column);
+		if (get_namespace(
+		    &(transition->ns.list), &(transition->ns.count)))
+			break;
+		add_list_data(&(transition->ns), CCS_SCREEN_NS_LIST);
+		set_position_addentry(transition, &path);
+		disp_statusbar(transition, CCS_SCREEN_NS_LIST);
 		view_cursor_set(view, path, column);
 		gtk_widget_grab_focus(view);
 		break;
@@ -560,6 +591,7 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 				break;
 			add_task_tree_data(GTK_TREE_VIEW(view), &(transition->tsk));
 			gtk_tree_view_expand_all(GTK_TREE_VIEW(view));
+			view_cursor_set(view, path, column);
 		} else {
 			if (get_domain_policy(
 			    transition->dp, &(transition->domain_count)))
@@ -567,20 +599,12 @@ void refresh_transition(GtkAction *action, transition_t *transition)
 			add_tree_data(GTK_TREE_VIEW(view), transition->dp);
 			gtk_tree_view_expand_all(GTK_TREE_VIEW(view));
 			set_position_addentry(transition, &path);
+			if (transition->domain_count)
+				view_cursor_set(view, path, column);
+			else
+				clear_acl_view(transition);
 		}
-
-		view_cursor_set(view, path, column);
 		gtk_widget_show(view);
-#if 0
-		if (transition->acl_detached) {	// get focus
-			gtk_widget_grab_focus(transition->acl.listview);
-			DEBUG_PRINT("☆Transition[%d] Acl[%d]\n",
-				gtk_window_has_toplevel_focus(GTK_WINDOW(transition->window)),
-				gtk_window_has_toplevel_focus(GTK_WINDOW(transition->acl_window)));
-		} else {
-			gtk_widget_grab_focus(view);
-		}
-#endif
 		gtk_widget_grab_focus(view);
 		break;
 	case CCS_SCREEN_ACL_LIST :
@@ -612,7 +636,7 @@ static void copy_line(GtkAction *action, transition_t *transition)
 		view = transition->treeview;
 		if (index >= 0)
 			insert_history_buffer(view, decode_from_octal_str(
-				ccs_domain_name(transition->dp, index)));
+				get_domain_name(transition->dp, index)));
 		break;
 	case CCS_SCREEN_ACL_LIST :
 		view = transition->acl.listview;
@@ -624,6 +648,10 @@ static void copy_line(GtkAction *action, transition_t *transition)
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
 		view = transition->prf.listview;
+		insert_history_buffer(view, get_alias_and_operand(view, FALSE));
+		break;
+	case CCS_SCREEN_NS_LIST :
+		view = transition->ns.listview;
 		insert_history_buffer(view, get_alias_and_operand(view, FALSE));
 		break;
 	default :
@@ -1056,6 +1084,14 @@ static void append_transition(GtkAction *action, transition_t *transition)
 			result = add_profile(input, &err_buff);
 		type = ADDENTRY_PROFILE_LIST;
 		break;
+	case CCS_SCREEN_NS_LIST :
+		DEBUG_PRINT("append namespace\n");
+		result = append_dialog(transition,
+				 _("Add Namespace"), &input);
+		if (!result)
+			result = add_namespace(input, &err_buff);
+		type = ADDENTRY_NAMESPACE_LIST;
+		break;
 	default :
 		DEBUG_PRINT("append ???\n");
 		break;
@@ -1203,6 +1239,8 @@ static void set_domain(transition_t *transition)
 	listview = create_list_profile();
 	g_signal_connect(G_OBJECT(listview), "row-activated",
 			G_CALLBACK(cb_profile_activate), dialog);
+	if (get_profile(&(transition->prf.list), &(transition->prf.count)))
+		return;
 	add_list_profile(listview, &(transition->prf));
 	view_cursor_set(listview, NULL, NULL);
 	gtk_container_add(
@@ -1368,8 +1406,8 @@ static void show_about_dialog(void)
 	gtk_about_dialog_set_copyright(about,
 				"Copyright(C) 2010,2011 TOMOYO Linux Project");
 	gtk_about_dialog_set_comments(about,
-				"Gui Policy Editor for TOMOYO Linux 1.8.1"
-				" or AKARI 1.0.11"
+				"Gui Policy Editor for TOMOYO Linux 2.4 , 1.8.2"
+				" or AKARI 1.0.17"
 				"\n(based on ccs-editpolicy:ccstools)");
 	gtk_about_dialog_set_website(about, "http://sourceforge.jp/projects/gpet/");
 //	gtk_about_dialog_set_website_label(about, "http://tomoyo.sourceforge.jp/");

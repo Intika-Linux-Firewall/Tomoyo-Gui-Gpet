@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.1   2011/04/01
+ * Version: 1.8.2   2011/06/20
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -310,7 +310,8 @@ struct ccs_editpolicy_directive ccs_directives[CCS_MAX_DIRECTIVE_INDEX] = {
 	[CCS_DIRECTIVE_FILE_UNLINK]   = { "file unlink", NULL, 0, 0 },
 	[CCS_DIRECTIVE_FILE_UNMOUNT]  = { "file unmount", NULL, 0, 0 },
 	[CCS_DIRECTIVE_FILE_WRITE]    = { "file write", NULL, 0, 0 },
-	[CCS_DIRECTIVE_INITIALIZE_DOMAIN] = { "initialize_domain", NULL, 0, 0 },
+	[CCS_DIRECTIVE_INITIALIZE_DOMAIN]
+	= { "initialize_domain", NULL, 0, 0 },
 	[CCS_DIRECTIVE_IPC_SIGNAL]    = { "ipc signal", NULL, 0, 0 },
 	[CCS_DIRECTIVE_KEEP_DOMAIN]   = { "keep_domain", NULL, 0, 0 },
 	[CCS_DIRECTIVE_MISC_ENV]      = { "misc env", NULL, 0, 0 },
@@ -320,9 +321,11 @@ struct ccs_editpolicy_directive ccs_directives[CCS_MAX_DIRECTIVE_INDEX] = {
 	[CCS_DIRECTIVE_NO_INITIALIZE_DOMAIN]
 	= { "no_initialize_domain", NULL, 0, 0 },
 	[CCS_DIRECTIVE_NO_KEEP_DOMAIN] = { "no_keep_domain", NULL, 0, 0 },
+	[CCS_DIRECTIVE_NO_RESET_DOMAIN] = { "no_reset_domain", NULL, 0, 0 },
 	[CCS_DIRECTIVE_NUMBER_GROUP]  = { "number_group", NULL, 0, 0 },
 	[CCS_DIRECTIVE_PATH_GROUP]    = { "path_group", NULL, 0, 0 },
 	[CCS_DIRECTIVE_QUOTA_EXCEEDED] = { "quota_exceeded", NULL, 0, 0 },
+	[CCS_DIRECTIVE_RESET_DOMAIN]  = { "reset_domain", NULL, 0, 0 },
 	[CCS_DIRECTIVE_TASK_AUTO_DOMAIN_TRANSITION]
 	= { "task auto_domain_transition", NULL, 0, 0 },
 	[CCS_DIRECTIVE_TASK_AUTO_EXECUTE_HANDLER]
@@ -331,7 +334,8 @@ struct ccs_editpolicy_directive ccs_directives[CCS_MAX_DIRECTIVE_INDEX] = {
 	= { "task denied_execute_handler", NULL, 0, 0 },
 	[CCS_DIRECTIVE_TASK_MANUAL_DOMAIN_TRANSITION]
 	= { "task manual_domain_transition", NULL, 0, 0 },
-	[CCS_DIRECTIVE_TRANSITION_FAILED] = { "transition_failed", NULL, 0, 0 },
+	[CCS_DIRECTIVE_TRANSITION_FAILED]
+	= { "transition_failed", NULL, 0, 0 },
 	[CCS_DIRECTIVE_USE_GROUP]     = { "use_group", NULL, 0, 0 },
 	[CCS_DIRECTIVE_USE_PROFILE]   = { "use_profile", NULL, 0, 0 },
 };
@@ -407,9 +411,7 @@ void ccs_editpolicy_init_keyword_map(void)
 			if (strcmp(line, ccs_directives[i].original))
 				continue;
 			free((void *) ccs_directives[i].alias);
-			cp = strdup(cp);
-			if (!cp)
-				ccs_out_of_memory();
+			cp = ccs_strdup(cp);
 			ccs_directives[i].alias = cp;
 			ccs_directives[i].alias_len = strlen(cp);
 			break;

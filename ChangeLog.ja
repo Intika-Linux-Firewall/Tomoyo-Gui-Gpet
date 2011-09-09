@@ -1,3 +1,18 @@
+2011/09/09  yocto  <yocto@users.sourceforge.jp>
+
+ 0.4 Released
+
+ * TOMOYO Linux 2.4 対応
+
+ * ベースとなるccs-editpolicyをccstools 1.8.2p4 20110820版 に変更
+
+ * ポリシー名前空間対応
+
+ * デスクトップに配置するショートカットのサンプル gpet.desktop 追加
+     下記のようにコピーして使用してください
+     cp /usr/share/doc/gpet/gpet.desktop ~/{Desktop|デスクトップ}/
+
+
 2011/06/18  yocto  <yocto@users.sourceforge.jp>
 
  0.3 Released
@@ -53,7 +68,7 @@
 
  * フォント及び色のリソースファイルに対応 gpetrc.sample 追加
      下記のようにコピーして中身を変更してください
-     cp /usr/share/doc/gpetrc.sample ~/.gpetrc
+     cp /usr/share/doc/gpet/gpetrc.sample ~/.gpetrc
 
  * プロセスモードのショーカットキーを Ctrl+O から Ctrl+@ に変更
 

@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.1   2011/04/01
+ * Version: 1.8.2+   2011/07/07
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -29,13 +29,16 @@ enum ccs_screen_type {
 	CCS_SCREEN_ACL_LIST,
 	CCS_SCREEN_PROFILE_LIST,
 	CCS_SCREEN_MANAGER_LIST,
-	CCS_SCREEN_QUERY_LIST,
+	/* CCS_SCREEN_QUERY_LIST, */
+	CCS_SCREEN_NS_LIST,
 	CCS_SCREEN_STAT_LIST,
 	CCS_MAXSCREEN
 };
 
 enum ccs_transition_type {
 	/* Do not change this order, */
+	CCS_TRANSITION_CONTROL_NO_RESET,
+	CCS_TRANSITION_CONTROL_RESET,
 	CCS_TRANSITION_CONTROL_NO_INITIALIZE,
 	CCS_TRANSITION_CONTROL_INITIALIZE,
 	CCS_TRANSITION_CONTROL_NO_KEEP,
@@ -338,9 +341,11 @@ enum ccs_editpolicy_directives {
 	CCS_DIRECTIVE_NETWORK_UNIX,
 	CCS_DIRECTIVE_NO_INITIALIZE_DOMAIN,
 	CCS_DIRECTIVE_NO_KEEP_DOMAIN,
+	CCS_DIRECTIVE_NO_RESET_DOMAIN,
 	CCS_DIRECTIVE_NUMBER_GROUP,
 	CCS_DIRECTIVE_PATH_GROUP,
 	CCS_DIRECTIVE_QUOTA_EXCEEDED,
+	CCS_DIRECTIVE_RESET_DOMAIN,
 	CCS_DIRECTIVE_TASK_AUTO_DOMAIN_TRANSITION,
 	CCS_DIRECTIVE_TASK_AUTO_EXECUTE_HANDLER,
 	CCS_DIRECTIVE_TASK_DENIED_EXECUTE_HANDLER,
@@ -365,14 +370,15 @@ enum ccs_color_pair {
 	CCS_MANAGER_CURSOR,
 	CCS_STAT_HEAD,
 	CCS_STAT_CURSOR,
+	CCS_DEFAULT_COLOR,
 	CCS_DISP_ERR
 };
 
 struct ccs_transition_control_entry {
+	const struct ccs_path_info *ns;
 	const struct ccs_path_info *domainname;    /* This may be NULL */
 	const struct ccs_path_info *program;       /* This may be NULL */
 	u8 type;
-	_Bool is_last_name;
 };
 
 struct ccs_generic_acl {
@@ -394,6 +400,7 @@ struct ccs_misc_policy {
 };
 
 struct ccs_path_group_entry {
+	const struct ccs_path_info *ns;
 	const struct ccs_path_info *group_name;
 	const struct ccs_path_info **member_name;
 	int member_name_len;
@@ -434,21 +441,43 @@ void ccs_editpolicy_color_change(const attr_t attr, const _Bool flg);
 void ccs_editpolicy_color_init(void);
 void ccs_editpolicy_init_keyword_map(void);
 void ccs_editpolicy_line_draw(void);
-void ccs_editpolicy_offline_daemon(void);
+void ccs_editpolicy_offline_daemon(const int listener, const int notifier);
 void ccs_editpolicy_optimize(const int current);
 void ccs_editpolicy_sttr_restore(void);
 void ccs_editpolicy_sttr_save(void);
+struct ccs_path_group_entry *ccs_find_path_group_ns
+(const struct ccs_path_info *ns, const char *group_name);
+
+struct ccs_domain {
+	const struct ccs_path_info *domainname;
+	const struct ccs_path_info *target; /* This may be NULL */
+	const struct ccs_transition_control_entry *d_t; /* This may be NULL */
+	const struct ccs_path_info **string_ptr;
+	int string_count;
+	int number;   /* domain number (-1 if target or is_dd) */
+	u8 profile;
+	u8 group;
+	_Bool is_djt; /* domain jump target */
+	_Bool is_dk;  /* domain keeper */
+	_Bool is_du;  /* unreachable domain */
+	_Bool is_dd;  /* deleted domain */
+};
+
+struct ccs_domain_policy3 {
+	struct ccs_domain *list;
+	int list_len;
+	unsigned char *list_selected;
+};
 
 extern enum ccs_screen_type ccs_current_screen;
-extern int ccs_gacl_list_count;
 extern int ccs_list_item_count;
 extern int ccs_path_group_list_len;
-extern int ccs_persistent_fd;
-extern struct ccs_domain_policy ccs_dp;
+extern struct ccs_domain_policy3 ccs_dp;
 extern struct ccs_editpolicy_directive ccs_directives[CCS_MAX_DIRECTIVE_INDEX];
 extern struct ccs_generic_acl *ccs_gacl_list;
 extern struct ccs_path_group_entry *ccs_path_group_list;
 extern struct ccs_screen ccs_screen[CCS_MAXSCREEN];
+extern const struct ccs_path_info *ccs_current_ns;
 
 #ifdef __GPET
 	#include "../g_undef.h"

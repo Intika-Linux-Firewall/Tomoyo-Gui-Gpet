@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2005-2011  NTT DATA CORPORATION
  *
- * Version: 1.8.1   2011/04/01
+ * Version: 1.8.2+   2011/07/07
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License v2 as published by the
@@ -51,12 +51,39 @@
 
 /***** CONSTANTS DEFINITION START *****/
 
-#define CCS_ROOT_NAME                    "<kernel>"
-#define CCS_ROOT_NAME_LEN                (sizeof(CCS_ROOT_NAME) - 1)
+#ifdef __GPET
+_Bool is_ccs(void);
+#define TOMOYO_PROC_POLICY_DIR "/sys/kernel/security/tomoyo/"
 
+#define CCS_PROC_POLICY_DIR \
+		is_ccs() ? "/proc/ccs/" : "/sys/kernel/security/tomoyo/"
+#define CCS_PROC_POLICY_DOMAIN_POLICY \
+		is_ccs() ? "/proc/ccs/domain_policy" : \
+				"/sys/kernel/security/tomoyo/domain_policy"
+#define CCS_PROC_POLICY_EXCEPTION_POLICY \
+		is_ccs() ? "/proc/ccs/exception_policy" : \
+				"/sys/kernel/security/tomoyo/exception_policy"
+#define CCS_PROC_POLICY_AUDIT \
+		is_ccs() ? "/proc/ccs/audit" : \
+				"/sys/kernel/security/tomoyo/audit"
+#define CCS_PROC_POLICY_MANAGER \
+		is_ccs() ? "/proc/ccs/manager" : \
+				"/sys/kernel/security/tomoyo/manager"
+#define CCS_PROC_POLICY_STAT \
+		is_ccs() ? "/proc/ccs/stat" : \
+				"/sys/kernel/security/tomoyo/stat"
+#define CCS_PROC_POLICY_PROCESS_STATUS \
+		is_ccs() ? "/proc/ccs/.process_status" : \
+				"/sys/kernel/security/tomoyo/.process_status"
+#define CCS_PROC_POLICY_PROFILE \
+		is_ccs() ? "/proc/ccs/profile" : \
+				"/sys/kernel/security/tomoyo/profile"
+#define CCS_PROC_POLICY_QUERY \
+		is_ccs() ? "/proc/ccs/query" : \
+				"/sys/kernel/security/tomoyo/query"
+#else
 #define CCS_PROC_POLICY_DIR              "/proc/ccs/"
 #define CCS_PROC_POLICY_DOMAIN_POLICY    "/proc/ccs/domain_policy"
-#define CCS_PROC_POLICY_DOMAIN_STATUS    "/proc/ccs/.domain_status"
 #define CCS_PROC_POLICY_EXCEPTION_POLICY "/proc/ccs/exception_policy"
 #define CCS_PROC_POLICY_AUDIT            "/proc/ccs/audit"
 #define CCS_PROC_POLICY_MANAGER          "/proc/ccs/manager"
@@ -64,6 +91,7 @@
 #define CCS_PROC_POLICY_PROCESS_STATUS   "/proc/ccs/.process_status"
 #define CCS_PROC_POLICY_PROFILE          "/proc/ccs/profile"
 #define CCS_PROC_POLICY_QUERY            "/proc/ccs/query"
+#endif /* __GPET */
 
 /***** CONSTANTS DEFINITION END *****/
 
@@ -136,16 +164,17 @@ _Bool ccs_correct_path(const char *filename);
 _Bool ccs_correct_word(const char *string);
 _Bool ccs_decode(const char *ascii, char *bin);
 _Bool ccs_domain_def(const char *domainname);
-_Bool ccs_identical_file(const char *file1, const char *file2);
 _Bool ccs_move_proc_to_file(const char *src, const char *dest);
 _Bool ccs_path_matches_pattern(const struct ccs_path_info *pathname0,
 			       const struct ccs_path_info *pattern0);
-_Bool ccs_pathcmp(const struct ccs_path_info *a, const struct ccs_path_info *b);
+_Bool ccs_pathcmp(const struct ccs_path_info *a,
+		  const struct ccs_path_info *b);
 _Bool ccs_str_starts(char *str, const char *begin);
 char *ccs_freadline(FILE *fp);
 char *ccs_freadline_unpack(FILE *fp);
-char *ccs_make_filename(const char *prefix, const time_t time);
-char *ccs_shprintf(const char *fmt, ...) __attribute__ ((format(printf, 1, 2)));
+char *ccs_shprintf(const char *fmt, ...)
+	__attribute__ ((format(printf, 1, 2)));
+char *ccs_strdup(const char *string);
 const char *ccs_domain_name(const struct ccs_domain_policy *dp,
 			    const int index);
 const struct ccs_path_info *ccs_savename(const char *name);
@@ -155,8 +184,9 @@ int ccs_assign_domain(struct ccs_domain_policy *dp, const char *domainname,
 		      const _Bool is_dis, const _Bool is_dd);
 int ccs_del_string_entry(struct ccs_domain_policy *dp, const char *entry,
 			 const int index);
-int ccs_find_domain(const struct ccs_domain_policy *dp, const char *domainname0,
-		    const _Bool is_dis, const _Bool is_dd);
+int ccs_find_domain(const struct ccs_domain_policy *dp,
+		    const char *domainname0, const _Bool is_dis,
+		    const _Bool is_dd);
 int ccs_find_domain_by_ptr(struct ccs_domain_policy *dp,
 			   const struct ccs_path_info *domainname);
 int ccs_open_stream(const char *filename);
@@ -165,6 +195,9 @@ int ccs_parse_number(const char *number, struct ccs_number_entry *entry);
 int ccs_string_compare(const void *a, const void *b);
 int ccs_write_domain_policy(struct ccs_domain_policy *dp, const int fd);
 struct ccs_path_group_entry *ccs_find_path_group(const char *group_name);
+void *ccs_malloc(const size_t size);
+void *ccs_realloc(void *ptr, const size_t size);
+void *ccs_realloc2(void *ptr, const size_t size);
 void ccs_clear_domain_policy(struct ccs_domain_policy *dp);
 void ccs_delete_domain(struct ccs_domain_policy *dp, const int index);
 void ccs_fill_path_info(struct ccs_path_info *ptr);
@@ -173,9 +206,9 @@ void ccs_get(void);
 void ccs_handle_domain_policy(struct ccs_domain_policy *dp, FILE *fp,
 			      _Bool is_write);
 void ccs_normalize_line(char *buffer);
-void ccs_out_of_memory(void);
 void ccs_put(void);
-void ccs_read_domain_policy(struct ccs_domain_policy *dp, const char *filename);
+void ccs_read_domain_policy(struct ccs_domain_policy *dp,
+			    const char *filename);
 void ccs_read_process_list(_Bool show_all);
 
 extern _Bool ccs_freadline_raw;

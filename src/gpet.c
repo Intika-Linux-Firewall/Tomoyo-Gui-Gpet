@@ -72,6 +72,12 @@ gchar *decode_from_octal_str(const char *name)
 }
 
 /*---------------------------------------------------------------------------*/
+static gboolean is_jump_source(
+			struct ccs_domain_policy3 *dp, const int index)
+{
+	return dp->list[index].target != NULL;
+}
+/*---------------------------------------------------------------------------*/
 enum tree_column_pos {
 	COLUMN_INDEX,			// data index (invisible)
 	COLUMN_NUMBER,			// n
@@ -87,7 +93,7 @@ enum tree_column_pos {
 };
 /*---------------------------------------------------------------------------*/
 static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
-			struct ccs_domain_policy *dp, int *index, int nest)
+			struct ccs_domain_policy3 *dp, int *index, int nest)
 {
 	GtkTreeIter	iter;
 	gchar		*color = "black";
@@ -99,7 +105,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 
 //g_print("add_tree_store index[%3d] nest[%2d]\n", *index, nest);
 
-	sp = ccs_domain_name(dp, *index);
+	sp = get_domain_name(dp, *index);
 	for (n = 0; ; n++) {
 		const char *cp = strchr(sp, ' ');
 		if (!cp)
@@ -112,9 +118,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	number = dp->list[*index].number;
 	if (number >= 0) {
 		str_num = g_strdup_printf("%4d", number);
-		str_prof = dp->list[*index].profile_assigned ?
-			g_strdup_printf("%3u", dp->list[*index].profile) :
-			g_strdup("???");
+		str_prof = g_strdup_printf("%3u", dp->list[*index].profile);
 	} else {
 		str_num = g_strdup("");
 		str_prof = g_strdup("");
@@ -126,14 +130,14 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 		COLUMN_COLON,		number >= 0 ? ":" : "",
 		COLUMN_PROFILE,		str_prof,
 		COLUMN_KEEPER_DOMAIN,	dp->list[*index].is_dk ? "#" : " ",
-		COLUMN_INITIALIZER_TARGET, dp->list[*index].is_dit ? "*" : " ",
+		COLUMN_INITIALIZER_TARGET, dp->list[*index].is_djt ? "*" : " ",
 		COLUMN_DOMAIN_UNREACHABLE, dp->list[*index].is_du ? "!" : " ",
 		-1);
 	g_free(str_num);
 	g_free(str_prof);
 
 	transition_control = dp->list[*index].d_t;
-	if (transition_control && !(dp->list[*index].is_dis)) {
+	if (transition_control && !is_jump_source(dp, *index)) {
 		line = g_strdup_printf(" ( %s%s from %s )",
 			get_transition_name(transition_control->type),
 			transition_control->program ?
@@ -141,24 +145,26 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 			transition_control->domainname ?
 				transition_control->domainname->name : "any");
 		color =
-		transition_control->type == CCS_TRANSITION_CONTROL_KEEP ?
-		"green" : "cyan";
-	} else if (dp->list[*index].is_dis) {	/* initialize_domain */
-		is_dis = g_strdup_printf(CCS_ROOT_NAME "%s",
-				strrchr(ccs_domain_name(dp, *index), ' '));
-		redirect_index = ccs_find_domain(dp, is_dis, false, false);
-		g_free(is_dis);
+		  transition_control->type == CCS_TRANSITION_CONTROL_KEEP ?
+		  "green" : "cyan";
+	} else if (is_jump_source(dp, *index)) {	/* initialize_domain */
+		g_free(name);
+		name = g_strdup(dp->list[*index].target->name);
+		redirect_index = get_find_target_domain(*index);
 		color = "blue";
 		if (redirect_index >= 0)
 			is_dis = g_strdup_printf(" ( -> %d )",
 				       	dp->list[redirect_index].number);
-		else
+		else if (redirect_index == EOF)
 			is_dis = g_strdup_printf(" ( -> Not Found )");
+		else
+			is_dis = g_strdup_printf(" ( -> Namespace jump )");
 	} else if (dp->list[*index].is_dd) {	/* delete_domain */
 		color = "gray";
 	}
-	domain = g_strdup_printf("%s%s%s%s%s",
+	domain = g_strdup_printf("%s%s%s%s%s%s",
 			dp->list[*index].is_dd ? "( " : "",
+			is_jump_source(dp, *index) ? "=> " : "",
 			name,
 			dp->list[*index].is_dd ? " )" : "",
 			line ? line : "",
@@ -175,7 +181,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	(*index)++;
 
 	while (*index < dp->list_len) {
-		sp = ccs_domain_name(dp, *index);
+		sp = get_domain_name(dp, *index);
 		for (n = 0; ; n++) {
 			const char *cp = strchr(sp, ' ');
 			if (!cp)
@@ -192,7 +198,7 @@ static int add_tree_store(GtkTreeStore *store, GtkTreeIter *parent_iter,
 	return n;
 }
 
-void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp)
+void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy3 *dp)
 {
 	GtkTreeStore	*store;
 	GtkTreeIter	*iter = NULL;
@@ -200,7 +206,8 @@ void add_tree_data(GtkTreeView *treeview, struct ccs_domain_policy *dp)
 
 	store = GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
 	gtk_tree_store_clear(store);	// TODO 遅い
-	add_tree_store(store, iter, dp, &index, nest);
+	if (dp->list_len > 0)
+		add_tree_store(store, iter, dp, &index, nest);
 }
 /*---------------------------------------------------------------------------*/
 static GtkTreeViewColumn *column_add(
@@ -308,12 +315,13 @@ enum list_column_pos {
 	N_COLUMNS_LIST
 };
 
-void add_list_data(generic_list_t *generic, gboolean alias_flag)
+void add_list_data(generic_list_t *generic,
+			enum ccs_screen_type current_page)
 {
 	GtkListStore	*store;
 	GtkTreeIter	iter;
 	int		i;
-	gchar		*str_num, *profile, *alias;
+	gchar		*str_num, *ope, *profile, *alias;
 
 	store = GTK_LIST_STORE(gtk_tree_view_get_model(
 				GTK_TREE_VIEW(generic->listview)));
@@ -323,21 +331,21 @@ void add_list_data(generic_list_t *generic, gboolean alias_flag)
 		str_num = g_strdup_printf("%4d", i);
 		gtk_list_store_append(store, &iter);
 
-		if (alias_flag) {
-			gchar *ope = decode_from_octal_str(
-						generic->list[i].operand);
-
+		switch((int)current_page) {
+		case CCS_SCREEN_EXCEPTION_LIST :
+		case CCS_SCREEN_ACL_LIST :
+			ope = decode_from_octal_str(generic->list[i].operand);
 			alias = (gchar *)
 			  ccs_directives[generic->list[i].directive].alias;
 			gtk_list_store_set(store, &iter,
-				LIST_NUMBER, str_num,
-				LIST_COLON,  ":",
-				LIST_ALIAS, alias,
-//				LIST_OPERAND, generic->list[i].operand,
-				LIST_OPERAND, ope,	// test
-				-1);
-			g_free(ope);	// test
-		} else {
+					LIST_NUMBER, str_num,
+					LIST_COLON,  ":",
+					LIST_ALIAS, alias,
+					LIST_OPERAND, ope,
+					-1);
+			g_free(ope);
+			break;
+		case CCS_SCREEN_PROFILE_LIST :
 			profile = g_strdup_printf("%3u-",
 					generic->list[i].directive);
 			alias = g_strdup_printf("%s%s",
@@ -351,6 +359,14 @@ void add_list_data(generic_list_t *generic, gboolean alias_flag)
 					-1);
 			g_free(profile);
 			g_free(alias);
+			break;
+		case CCS_SCREEN_NS_LIST :
+			gtk_list_store_set(store, &iter,
+					LIST_NUMBER, str_num,
+					LIST_COLON,  ":",
+					LIST_OPERAND, generic->list[i].operand,
+					-1);
+			break;
 		}
 		g_free(str_num);
 	}
@@ -500,7 +516,7 @@ static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
 		view = transition->treeview;
 		gtk_tree_model_get(model, iter, COLUMN_INDEX, &index, -1);
 		str_buff = decode_from_octal_str(
-					ccs_domain_name(transition->dp, index));
+					get_domain_name(transition->dp, index));
 		cmp = strcmp(entry, str_buff);
 		break;
 	case ADDENTRY_ACL_LIST :
@@ -523,6 +539,11 @@ static gboolean move_pos_list(GtkTreeModel *model, GtkTreePath *path,
 		gtk_tree_model_get(model, iter, LIST_NUMBER, &str_buff, -1);
 		cmp = atoi(entry) - transition->prf.list[atoi(str_buff)].directive;
 //g_print("entry[%s] [%s:%d]\n", entry, str_buff, transition->prf.list[atoi(str_buff)].directive);
+		break;
+	case ADDENTRY_NAMESPACE_LIST :
+		view = transition->ns.listview;
+		gtk_tree_model_get(model, iter, LIST_OPERAND, &operand, -1);
+		cmp = strcmp(entry, operand);
 		break;
 	}
 	g_free(alias);
@@ -571,6 +592,9 @@ void set_position_addentry(transition_t *transition, GtkTreePath **path)
 		break;
 	case ADDENTRY_PROFILE_LIST :
 		view = transition->prf.listview;
+		break;
+	case ADDENTRY_NAMESPACE_LIST :
+		view = transition->ns.listview;
 		break;
 	}
 
@@ -622,7 +646,12 @@ static void cb_selection(GtkTreeSelection *selection,
 	g_list_free(list);
 	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
 	DEBUG_PRINT("--- index [%4d] ---\n", index);
-	name = decode_from_octal_str(ccs_domain_name(transition->dp, index));
+	name = decode_from_octal_str(get_domain_name(transition->dp, index));
+	if (is_jump_source(transition->dp, index)) {
+		gchar *cp = strrchr(name, ' ');
+		if (cp)
+			*cp = '\0';
+	}
 	gtk_entry_set_text(GTK_ENTRY(transition->domainbar), name);
 	g_free(name);
 
@@ -631,7 +660,7 @@ static void cb_selection(GtkTreeSelection *selection,
 
 	get_acl_list(transition->dp, index,
 		&(transition->acl.list), &(transition->acl.count));
-	add_list_data(&(transition->acl), TRUE);
+	add_list_data(&(transition->acl), CCS_SCREEN_ACL_LIST);
 
 	if (transition->acl.count) {
 		set_position_addentry(transition, &path);
@@ -645,55 +674,24 @@ static void cb_selection(GtkTreeSelection *selection,
 	}
 	DEBUG_PRINT("Out **************************** \n");
 }
-#if 0
-static void cb_selection (GtkTreeView		*treeview,
-				transition_t		*transition)
+/*---------------------------------------------------------------------------*/
+static void set_ns_tab_label(transition_t *transition,
+				const gchar *namespace)
 {
-	GtkTreeSelection	*selection;
-	GtkTreeIter	iter;
-	gint		select_count;
-	GtkTreeModel	*model;
-	GList		*list;
-	gint		index;
-	GtkTreePath		*path = NULL;
-	GtkTreeViewColumn	*column = NULL;
+	GtkWidget		*notebook;
+	GtkWidget		*tab4;
 
-	DEBUG_PRINT("In  **************************** \n");
-	selection = gtk_tree_view_get_selection(treeview);
-	select_count = gtk_tree_selection_count_selected_rows(selection);
-	DEBUG_PRINT("select count[%d]\n", select_count);
-	if (0 == select_count)
-		return;
+	notebook = g_object_get_data(
+				G_OBJECT(transition->window), "notebook");
+	tab4 = g_object_get_data(
+				G_OBJECT(transition->window), "tab4");
+	gtk_notebook_set_tab_label_text(
+				GTK_NOTEBOOK(notebook), tab4, namespace);
+	gtk_notebook_set_menu_label_text(
+				GTK_NOTEBOOK(notebook), tab4, namespace);
 
-	model = gtk_tree_view_get_model(
-				GTK_TREE_VIEW(transition->treeview));
-	list = gtk_tree_selection_get_selected_rows(selection, NULL);
-	gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
-	g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
-	g_list_free(list);
-	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index, -1);
-	DEBUG_PRINT("--- index [%4d] ---\n", index);
-	gtk_entry_set_text(GTK_ENTRY(transition->domainbar),
-				ccs_domain_name(transition->dp, index));
-
-	gtk_tree_view_get_cursor(GTK_TREE_VIEW(
-			transition->acl.listview), &path, &column);
-
-	get_acl_list(transition->dp, index,
-		&(transition->acl.list), &(transition->acl.count));
-	add_list_data(&(transition->acl), TRUE);
-
-	if (transition->acl.count) {
-		DEBUG_PRINT("ACL count<%d>\n", transition->acl.count);
-		DEBUG_PRINT("ACL ");
-		view_cursor_set(transition->acl.listview, path, column);
-		disp_statusbar(transition, CCS_SCREEN_ACL_LIST);
-	} else {	/* delete_domain or initializer_source */
-		disp_statusbar(transition, CCS_MAXSCREEN);
-	}
-	DEBUG_PRINT("Out **************************** \n");
+	put_ns_name(namespace);
 }
-#endif
 /*---------------------------------------------------------------------------*/
 struct FindIsDis_t {
 	gint		redirect_index;
@@ -716,21 +714,36 @@ static gboolean find_is_dis(GtkTreeModel *model, GtkTreePath *path,
 }
 
 static void cb_initialize_domain(GtkTreeView *treeview, GtkTreePath *treepath,
-			GtkTreeViewColumn treeviewcolumn, gpointer dummy)
+		GtkTreeViewColumn *treeviewcolumn, transition_t *transition)
 {
-	GtkTreeIter	iter;
-	GtkTreeModel	*model;
-	gboolean	ret;
+	GtkTreeIter		iter;
+	GtkTreeModel		*model;
 	struct FindIsDis_t	data;
+	gint			index;
 
 	DEBUG_PRINT("In  **************************** \n");
 	model = gtk_tree_view_get_model(treeview);
-	ret = gtk_tree_model_get_iter(model, &iter, treepath);
-	if (ret)
-		gtk_tree_model_get(model, &iter,
+	if (!gtk_tree_model_get_iter(model, &iter, treepath))
+		return;
+
+	gtk_tree_model_get(model, &iter, COLUMN_INDEX, &index,
 				COLUMN_REDIRECT, &data.redirect_index, -1);
-	DEBUG_PRINT("redirect_index[%d]\n", data.redirect_index);
-	if (!ret || data.redirect_index < 0)
+//#undef DEBUG_PRINT
+//#define DEBUG_PRINT g_print
+	DEBUG_PRINT("index[%d] redirect_index[%d]\n", index, data.redirect_index);
+
+	if (data.redirect_index == -2) {
+		gchar *namespace =
+			g_strdup(transition->dp->list[index].target->name);
+		DEBUG_PRINT("%s\n", namespace);
+		char *cp = strchr(namespace, ' ');
+		if (cp)
+			*cp = '\0';
+		set_ns_tab_label(transition, namespace);
+		g_free(namespace);
+		refresh_transition(NULL, transition);
+		return;
+	} else if (data.redirect_index < 0)
 		return;		/* not initialize_domain */
 
 	data.path = NULL;
@@ -790,6 +803,10 @@ void set_sensitive(GtkActionGroup *actions, int task_flag,
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
 		sens_edt = TRUE;
+		sens_add = TRUE;
+		sens_cpy = TRUE;
+		break;
+	case CCS_SCREEN_NS_LIST :
 		sens_add = TRUE;
 		sens_cpy = TRUE;
 		break;
@@ -875,6 +892,37 @@ static gboolean cb_select_prf(GtkTreeView *listview,  GdkEventButton *event,
 	set_sensitive(transition->actions, transition->task_flag,
 						transition->current_page);
 	return popup_menu(transition, event->button);
+}
+
+static gboolean cb_select_ns(GtkTreeView *listview,  GdkEventButton *event,
+				transition_t *transition)
+{
+	transition->current_page = CCS_SCREEN_NS_LIST;
+	set_sensitive(transition->actions, transition->task_flag,
+						transition->current_page);
+	return popup_menu(transition, event->button);
+}
+/*---------------------------------------------------------------------------*/
+static void cb_ns_selection(GtkTreeSelection *selection,
+				transition_t *transition)
+{
+	GtkTreeIter		iter;
+	GtkTreeModel		*model;
+	GList			*list;
+	gchar			*namespace;
+
+	if (0 == gtk_tree_selection_count_selected_rows(selection))
+		return;
+
+	model = gtk_tree_view_get_model(
+				GTK_TREE_VIEW(transition->ns.listview));
+	list = gtk_tree_selection_get_selected_rows(selection, NULL);
+	gtk_tree_model_get_iter(model, &iter, g_list_first(list)->data);
+	g_list_foreach(list, (GFunc)gtk_tree_path_free, NULL);
+	g_list_free(list);
+	gtk_tree_model_get(model, &iter, LIST_OPERAND, &namespace, -1);
+	set_ns_tab_label(transition, namespace);
+	g_free(namespace);
 }
 /*---------------------------------------------------------------------------*/
 static gboolean inc_search(GtkTreeModel *model, gint column,
@@ -975,7 +1023,7 @@ static void set_select_flag_domain(gpointer data,
 	GtkTreeModel		*model;
 	GtkTreeIter		iter;
 	gint			index;
-	struct ccs_domain_policy *dp = transition->dp;
+	struct ccs_domain_policy3 *dp = transition->dp;
 
 
 	model = gtk_tree_view_get_model(
@@ -988,7 +1036,7 @@ static void set_select_flag_domain(gpointer data,
 
 	DEBUG_PRINT("index[%d]\n", index);
 	/* deleted_domain or initializer_source */
-	if (!(dp->list[index].is_dd) && !(dp->list[index].is_dis))
+	if (!(dp->list[index].is_dd) && !(dp->list[index].target))
 		dp->list_selected[index] = 1;
 }
 
@@ -1164,7 +1212,7 @@ gint delete_exp(transition_t *transition,
 	return result;
 }
 /*---------------------------------------------------------------------------*/
-static void create_tabs(GtkWidget *notebook, GtkWidget *box, gchar *str)
+static void create_tabs(GtkWidget *notebook, GtkWidget *box, const gchar *str)
 {
 	GtkWidget	*label, *label_box, *menu_box;
 
@@ -1220,6 +1268,7 @@ gchar *disp_window_title(enum ccs_screen_type current_page)
 					CCS_PROC_POLICY_EXCEPTION_POLICY);
 		break;
 	case CCS_SCREEN_PROFILE_LIST :
+	case CCS_SCREEN_NS_LIST :
 		if (is_offline())
 			title = g_strdup_printf("%s - %s%s%s", mode[e_off], dir,
 			 CCS_DISK_POLICY_DIR, CCS_DISK_POLICY_PROFILE);
@@ -1320,25 +1369,20 @@ static void cb_switch_page(GtkWidget    *notebook,
 					GTK_TREE_VIEW(tran->treeview));
 		selection_list = gtk_tree_view_get_selection(
 					GTK_TREE_VIEW(tran->acl.listview));
-
 		if (tran->acl_detached) {
-			if(selection_list &&
-			    gtk_tree_selection_count_selected_rows(selection_list))
-				tran->current_page = CCS_SCREEN_ACL_LIST;
+			tran->current_page = CCS_SCREEN_ACL_LIST;
 			control_acl_window(tran);
-			g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
-		} else {
-			if (tran->task_flag ||
-				(selection_tree &&
-			    gtk_tree_selection_count_selected_rows(selection_tree)))
-				tran->current_page = CCS_SCREEN_DOMAIN_LIST;
-			else if(selection_list &&
-			    gtk_tree_selection_count_selected_rows(selection_list))
-				tran->current_page = CCS_SCREEN_ACL_LIST;
-			else
-				tran->current_page = CCS_MAXSCREEN;
-			g_object_set(G_OBJECT(notebook), "can-focus", TRUE, NULL);
 		}
+		if (tran->task_flag ||
+			(selection_tree &&
+		    gtk_tree_selection_count_selected_rows(selection_tree)))
+			tran->current_page = CCS_SCREEN_DOMAIN_LIST;
+		else if(selection_list &&
+		    gtk_tree_selection_count_selected_rows(selection_list))
+			tran->current_page = CCS_SCREEN_ACL_LIST;
+		else
+			tran->current_page = CCS_MAXSCREEN;
+		g_object_set(G_OBJECT(notebook), "can-focus", TRUE, NULL);
 		break;
 	case 1 :
 		tran->current_page = CCS_SCREEN_EXCEPTION_LIST;
@@ -1354,16 +1398,23 @@ static void cb_switch_page(GtkWidget    *notebook,
 		}
 		g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
 		break;
+	case 3 :
+		tran->current_page = CCS_SCREEN_NS_LIST;
+		if (tran->acl_detached) {
+			control_acl_window(tran);
+		}
+		g_object_set(G_OBJECT(notebook), "can-focus", FALSE, NULL);
+		break;
 	}
 
 	title = disp_window_title(tran->current_page);
 	gtk_window_set_title(GTK_WINDOW(tran->window), title);
 	g_free(title);
-//	disp_statusbar(tran, tran->current_page);
 	set_sensitive(tran->actions, tran->task_flag,
 					tran->current_page);
 
 	refresh_transition(NULL, tran);
+	disp_statusbar(tran, tran->current_page);
 	DEBUG_PRINT("Out Tab[%d]\n", page_num);
 }
 /*---------------------------------------------------------------------------*/
@@ -1422,7 +1473,7 @@ int gpet_main(void)
 	GtkWidget	*statusbar;
 	gint		contextid;
 	GtkWidget	*vbox;
-	GtkWidget	*tab1, *tab2, *tab3;
+	GtkWidget	*tab1, *tab2, *tab3, *tab4;
 	GtkWidget	*notebook;
 	GtkWidget	*pane;
 	GtkWidget	*domainbar;
@@ -1430,7 +1481,7 @@ int gpet_main(void)
 	GtkWidget	*treeview, *listview;
 	GtkContainer	*container, *acl_container;
 	gchar		*title;
-	struct ccs_domain_policy dp = { NULL, 0, NULL };
+	struct ccs_domain_policy3 dp = { NULL, 0, NULL };
 	transition_t	transition;
 
 	transition.task_flag = 0;
@@ -1533,12 +1584,12 @@ int gpet_main(void)
 
 	// cursor move  domain window
 	g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)),
-				"changed", G_CALLBACK(cb_selection), &transition);
+			"changed", G_CALLBACK(cb_selection), &transition);
 //	g_signal_connect(GTK_TREE_VIEW(treeview), "cursor-changed",
 //			G_CALLBACK(cb_selection), &transition);
 	// double click or enter key  domain window
 	g_signal_connect(G_OBJECT(treeview), "row-activated",
-			G_CALLBACK(cb_initialize_domain), NULL);
+			G_CALLBACK(cb_initialize_domain), &transition);
 	// mouse click  domain window
 	g_signal_connect(G_OBJECT(treeview), "button-press-event",
 			G_CALLBACK(cb_select_domain), &transition);
@@ -1566,19 +1617,40 @@ int gpet_main(void)
 	if (get_profile(&(transition.prf.list), &(transition.prf.count)))
 		g_warning("Read error : profile");
 	else
-		add_list_data(&(transition.prf), FALSE);
+		add_list_data(&(transition.prf), CCS_SCREEN_PROFILE_LIST);
 	// mouse click  profile window
 	g_signal_connect(G_OBJECT(listview), "button-press-event",
 			 G_CALLBACK(cb_select_prf), &transition);
+
+	tab4 = gtk_vbox_new(FALSE, 1);
+	// create namespace view
+	listview = create_list_model(FALSE);
+	create_list_view(tab4, listview, FALSE);
+	transition.ns.listview = listview;
+	transition.ns.count = 0;
+	transition.ns.list = NULL;
+	if (get_namespace(&(transition.ns.list), &(transition.ns.count)))
+		g_warning("Read error : namespace");
+	else
+		add_list_data(&(transition.ns), CCS_SCREEN_NS_LIST);
+	// mouse click  namespace window
+	g_signal_connect(G_OBJECT(listview), "button-press-event",
+			 G_CALLBACK(cb_select_ns), &transition);
+	// cursor move  namespace window
+	g_signal_connect(gtk_tree_view_get_selection(GTK_TREE_VIEW(listview)),
+			"changed", G_CALLBACK(cb_ns_selection), &transition);
 
 	// create tab
 	create_tabs(notebook, tab1, _("Domain Transition"));
 	create_tabs(notebook, tab2, _("Exception Policy"));
 	create_tabs(notebook, tab3, _("Profile"));
+	create_tabs(notebook, tab4, get_ns_name());
 
 	/* to save menu.c Process_state() */
 	g_object_set_data(G_OBJECT(window), "notebook", notebook);
 	g_object_set_data(G_OBJECT(window), "tab1", tab1);
+	/* to save cb_ns_selection() */
+	g_object_set_data(G_OBJECT(window), "tab4", tab4);
 
 	// tab change
 	g_signal_connect(G_OBJECT(notebook), "switch_page",

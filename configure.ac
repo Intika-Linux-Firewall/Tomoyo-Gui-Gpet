@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 dnl Created by Anjuta application wizard.
 
-AC_INIT(gpet, 0.3)
+AC_INIT(gpet, 0.4)
 
 __GPET=gpet
 AC_SUBST(__GPET)
