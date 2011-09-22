@@ -84,6 +84,7 @@ typedef struct _transition_t {
 #endif
 
 
+#define CCS_DISK_DIR is_ccs() ? "/etc/ccs/" : "/etc/tomoyo/"
 #define CCS_DISK_POLICY_DIR			"/policy/current/"
 #define CCS_DISK_POLICY_DOMAIN_POLICY		"domain_policy.conf"
 #define CCS_DISK_POLICY_EXCEPTION_POLICY	"exception_policy.conf"
@@ -161,7 +162,7 @@ gint delete_acl(transition_t *transition,
 gint delete_exp(transition_t *transition,
 			GtkTreeSelection *selection, gint count);
 gchar *disp_window_title(enum ccs_screen_type current_page);
-int gpet_main(void);
+int gpet_main(char *argv);
 
 // menu.c
 GtkWidget *create_menu(GtkWidget *parent, transition_t *transition,
@@ -181,6 +182,7 @@ void write_config(transition_t *tran);
 // other.c
 gboolean namespace_main(transition_t *transition);
 void manager_main(transition_t *transition);
+gboolean check_manager_policy(char *real_path);
 void memory_main(transition_t *transition);
 
 // process.c

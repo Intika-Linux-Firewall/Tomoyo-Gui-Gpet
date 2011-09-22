@@ -1466,7 +1466,7 @@ static void cb_show_acl(GtkWidget *view, transition_t *tran)
 	DEBUG_PRINT("Show ACL!!(%p)==(%p)\n", tran->acl.listview, view);
 }
 /*---------------------------------------------------------------------------*/
-int gpet_main(void)
+int gpet_main(char *path)
 {
 	GtkWidget	*window;
 	GtkWidget	*menubar, *toolbar = NULL;
@@ -1483,6 +1483,9 @@ int gpet_main(void)
 	gchar		*title;
 	struct ccs_domain_policy3 dp = { NULL, 0, NULL };
 	transition_t	transition;
+
+	if (check_manager_policy(path))
+		return 1;
 
 	transition.task_flag = 0;
 	if (get_domain_policy(&dp, &(transition.domain_count)))

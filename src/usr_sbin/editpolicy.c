@@ -3564,12 +3564,16 @@ static void ccs_save_offline(void)
 
 #ifdef __GPET	/* gpet */
 static void set_ccs_flag(void);
-int gpet_main(void);
+int gpet_main(char *argv);
 int ccs_main(int argc, char *argv[])
+{
+	char	*real_path = realpath(argv[0], NULL);
+	if (!real_path)
+		fprintf(stderr, "[%s]: %s\n", argv[0], strerror(errno));
 #else
 int main(int argc, char *argv[])
-#endif	/* gpet */
 {
+#endif	/* gpet */
 	ccs_parse_args(argc, argv);
 #ifdef __GPET	/* gpet */
 	set_ccs_flag();
@@ -3588,7 +3592,7 @@ int main(int argc, char *argv[])
 		ccs_load_readwrite();
 start:
 #ifdef __GPET
-	if (gpet_main())
+	if (gpet_main(real_path))
 		return 1;
 #else
 	initscr();

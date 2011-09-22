@@ -34,7 +34,7 @@
 
 typedef struct _other_t {
 	GtkWidget		*dialog;
-	GtkActionGroup 	*actions;
+	GtkActionGroup		*actions;
 	GtkWidget		*popup;
 	generic_list_t	manager;
 	generic_list_t	memory;
@@ -70,10 +70,20 @@ static const gchar *ui_info =
 "  </popup>"
 "</ui>";
 
+
+static void clear_generic_list(generic_list_t *gen)
+{
+	gint	i;
+	for(i = 0; i < gen->count; i++){
+		free((void *)gen->list[i].operand);
+	}
+	gen->count = 0;
+}
+
 static GtkWidget *create_dialog_menu(GtkWidget *parent, other_t *data)
 {
 	GtkUIManager		*ui;
-	GtkActionGroup 	*actions;
+	GtkActionGroup 		*actions;
 	GtkWidget		*toolbar;
 	GError			*error = NULL;
 
@@ -118,7 +128,7 @@ static GtkWidget *create_list_manager(void)
 {
 	GtkWidget		*treeview;
 	GtkListStore		*liststore;
-	GtkCellRenderer	*renderer;
+	GtkCellRenderer		*renderer;
 	GtkTreeViewColumn	*column;
 
 	liststore = gtk_list_store_new(N_COLUMNS_LIST,
@@ -426,11 +436,164 @@ void manager_main(transition_t *transition)
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
+	clear_generic_list(&(data.manager));
 
 	if (transition->acl_detached &&
 	    transition->current_page == CCS_SCREEN_ACL_LIST)
 		transition->current_page = CCS_SCREEN_DOMAIN_LIST;
 }
+/*-------+---------+---------+---------+---------+---------+---------+--------*/
+static void cb_toggled_conf_file(GtkToggleButton *widget, gboolean *conf_file)
+{
+	*conf_file = gtk_toggle_button_get_active(widget);
+}
+static gint warning_dialog(char *real_path, gboolean *conf_file)
+{
+	GtkWidget	*dialog;
+	GtkWidget	*vbox;
+	GtkWidget	*label;
+	GtkWidget	*conf;
+	gchar		*markup, *str;
+	gchar		*message = _("<b>Add manager policy</b>");
+	gint		result;
+
+	dialog = gtk_dialog_new_with_buttons("Warning",
+			NULL,
+			GTK_DIALOG_MODAL,
+			GTK_STOCK_QUIT, GTK_RESPONSE_REJECT,
+			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+			GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
+			NULL);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(
+		GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), vbox);
+
+	label = gtk_label_new(message);
+	gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, TRUE, 0);
+
+	markup = g_markup_printf_escaped(
+	_("<span foreground='red' size='x-large'>Not yet registered</span>\n\n"
+					"<b> Add %s to %s ? </b>\n"),
+					real_path, CCS_PROC_POLICY_MANAGER);
+	gtk_label_set_markup(GTK_LABEL(label), markup);
+	g_free(markup);
+
+	str = g_strdup_printf(_(" Add %s%s "),
+					CCS_DISK_DIR, CCS_DISK_POLICY_MANAGER);
+	conf = gtk_check_button_new_with_mnemonic(str);
+	g_free(str);
+	gtk_box_pack_start(GTK_BOX(vbox), conf, FALSE, FALSE, 1);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(conf), *conf_file);
+	g_signal_connect(G_OBJECT(conf), "toggled",
+				G_CALLBACK(cb_toggled_conf_file), conf_file);
+
+	gtk_container_set_border_width(GTK_CONTAINER(dialog), 5);
+//	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+	gtk_widget_show_all(dialog);
+	result = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+
+	return result;
+}
+
+static void put_manager_conf(char *real_path)
+{
+	gchar		*conf_file;
+	gboolean	ret = TRUE;
+	FILE		*fp;
+	char		*line = NULL;
+	size_t		len = 0;
+	size_t		real_len = strlen(real_path);
+
+	conf_file = g_strdup_printf("%s%s",
+		CCS_DISK_DIR, CCS_DISK_POLICY_MANAGER);
+
+	if ((fp = fopen(conf_file, "r+")) != NULL) {
+		while (getline(&line, &len, fp) != -1) {
+			DEBUG_PRINT("[%s]\n", line);
+			if (strncmp(real_path, line, real_len) == 0) {
+				ret = FALSE;
+				break;
+			}
+		}
+		free(line);
+		if (ret) {
+			DEBUG_PRINT("fputs[%s]\n", conf_file);
+			fprintf(fp, "%s\n", real_path);
+		}
+		fclose(fp);
+	} else {
+		g_error("%s\n", strerror(errno));
+	}
+	g_free(conf_file);
+}
+
+static gboolean put_manager_policy(char *real_path)
+{
+	gboolean	ret = FALSE, conf_file = TRUE;
+	gchar		*cmd;
+	gint		result;
+
+	switch (warning_dialog(real_path, &conf_file)) {
+		case GTK_RESPONSE_REJECT :
+			ret = TRUE;
+			break;
+		case GTK_RESPONSE_CANCEL :
+			break;
+		case GTK_RESPONSE_APPLY :
+			cmd = g_strdup_printf(
+				"echo '%s' | /usr/sbin/%s-loadpolicy -m",
+					real_path, is_ccs() ? "ccs" : "tomoyo");
+			result = system(cmd);
+			if (result) {
+				g_error("system %d\n", result);
+			}
+			g_free(cmd);
+
+			if (conf_file) {
+				put_manager_conf(real_path);
+			}
+			break;
+	}
+
+	return ret;
+}
+
+gboolean check_manager_policy(char *real_path)
+{
+	generic_list_t	manager;
+	gint			i;
+	gboolean		ret = TRUE;
+
+	if (is_offline() || is_network())
+		return FALSE;
+
+	DEBUG_PRINT("path[%s]\n", real_path);
+	if (!real_path)
+		return ret;
+
+	manager.count = 0;
+	manager.list = NULL;
+	get_manager(&(manager.list), &(manager.count));
+	DEBUG_PRINT("manager.count[%d]\n", manager.count);
+	// search own
+	for(i = 0; i < manager.count; i++){
+		if (strcmp(real_path, manager.list[i].operand) == 0) {
+			ret = FALSE;
+			break;
+		}
+	}
+
+	if (ret) {
+		ret = put_manager_policy(real_path);
+	}
+
+	free(real_path);
+	clear_generic_list(&manager);
+	return ret;
+}
+
 /*-------+---------+---------+---------+---------+---------+---------+--------*/
 static void cnv_local_time(gchar *date, gchar *time)
 {
@@ -717,6 +880,7 @@ retry_memory:
 		DEBUG_PRINT("Another response was recieved.\n");
 	}
 	gtk_widget_destroy(dialog);
+	clear_generic_list(&(data.memory));
 
 	if (transition->acl_detached &&
 	    transition->current_page == CCS_SCREEN_ACL_LIST)

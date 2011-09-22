@@ -607,8 +607,7 @@ void put_ns_name(const char *namespace)
 static _Bool gpet_is_ccs_flag;
 static void set_ccs_flag(void)
 {
-//	if (!is_offline() && !is_network())
-		gpet_is_ccs_flag = chdir(TOMOYO_PROC_POLICY_DIR) ? true : false;
+	gpet_is_ccs_flag = chdir(TOMOYO_PROC_POLICY_DIR) ? true : false;
 }
 
 _Bool is_ccs(void)

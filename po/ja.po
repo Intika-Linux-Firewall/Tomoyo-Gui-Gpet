@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-09-09 20:43+0900\n"
-"PO-Revision-Date: 2011-09-09 20:43+0900\n"
+"POT-Creation-Date: 2011-09-17 13:09+0900\n"
+"PO-Revision-Date: 2011-09-17 13:09+0900\n"
 "Last-Translator: Yoshihiro Kusuno <yocto@users.sourceforge.jp>\n"
 "Language-Team: Japanese < >\n"
 "Language: \n"
@@ -41,20 +41,20 @@ msgstr "マネージャ 一覧"
 msgid "Domain Policy Editor"
 msgstr "ドメインポリシーエディタ"
 
-#: ../src/gpet.c:1494 ../src/gpet.c:1519
+#: ../src/gpet.c:1497 ../src/gpet.c:1522
 msgid "gpet"
 msgstr "ｇｐｅｔ"
 
 #. create tab
-#: ../src/gpet.c:1644 ../src/menu.c:473
+#: ../src/gpet.c:1647 ../src/menu.c:473
 msgid "Domain Transition"
 msgstr "ドメイン遷移 一覧"
 
-#: ../src/gpet.c:1645
+#: ../src/gpet.c:1648
 msgid "Exception Policy"
 msgstr "例外ポリシー 一覧"
 
-#: ../src/gpet.c:1646
+#: ../src/gpet.c:1649
 msgid "Profile"
 msgstr "プロファイル 一覧"
 
@@ -292,33 +292,54 @@ msgstr "クスノ"
 msgid "Edit the selected line"
 msgstr "選択した行を修正します。"
 
-#: ../src/other.c:228
+#: ../src/other.c:238
 msgid "File Selection Dialog"
 msgstr "ファイルの選択"
 
-#: ../src/other.c:278
+#: ../src/other.c:288
 msgid "Manager Add"
 msgstr "マネージャを追加します。"
 
-#: ../src/other.c:358
+#: ../src/other.c:368
 #, c-format
 msgid "Delete the %d selected managers?"
 msgstr "選択した %d行のマネージャ登録を削除します。"
 
-#: ../src/other.c:359
+#: ../src/other.c:369
 #, c-format
 msgid "Delete the selected manager?"
 msgstr "選択したマネージャ登録を削除します。"
 
-#: ../src/other.c:598
+#: ../src/other.c:457
+msgid "<b>Add manager policy</b>"
+msgstr "<b>マネージャポリシーに追加</b>"
+
+#: ../src/other.c:476
+#, c-format
+msgid ""
+"<span foreground='red' size='x-large'>Not yet registered</span>\n"
+"\n"
+"<b> Add %s to %s ? </b>\n"
+msgstr ""
+"<span foreground='red' size='x-large'>マネージャポリシーに登録されていません"
+"</span>\n"
+"\n"
+"<b> %s を %s に追加しますか？ </b>\n"
+
+#: ../src/other.c:482
+#, c-format
+msgid " Add %s%s "
+msgstr " %s%s にも追加 "
+
+#: ../src/other.c:725
 msgid " "
 msgstr "　"
 
-#: ../src/other.c:605
+#: ../src/other.c:732
 msgid "Now (bytes)"
 msgstr "使用量（バイト）"
 
-#: ../src/other.c:615
+#: ../src/other.c:742
 msgid "Quota (bytes)"
 msgstr "最大 （バイト)"
 
