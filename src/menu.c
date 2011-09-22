@@ -1385,9 +1385,9 @@ GdkPixbuf *get_png_file(void)
 
 static void show_about_dialog(void)
 {
-	GtkWidget		*dialog;
+	GtkWidget	*dialog;
 	GtkAboutDialog	*about;
-	GdkPixbuf		*pixbuf;
+	GdkPixbuf	*pixbuf;
 
 	const gchar	*authors[] = {
 		_("Yoshihiro Kusuno <yocto@users.sourceforge.jp>"),
@@ -1406,11 +1406,11 @@ static void show_about_dialog(void)
 	gtk_about_dialog_set_copyright(about,
 				"Copyright(C) 2010,2011 TOMOYO Linux Project");
 	gtk_about_dialog_set_comments(about,
-				"Gui Policy Editor for TOMOYO Linux 2.4 , 1.8.2"
-				" or AKARI 1.0.17"
-				"\n(based on ccs-editpolicy:ccstools)");
+			"Gui Policy Editor for TOMOYO Linux 2.4, 2.5 , 1.8.X"
+			" or AKARI 1.0.XX"
+			"\n(based on ccs-editpolicy:ccstools)");
 	gtk_about_dialog_set_website(about, "http://sourceforge.jp/projects/gpet/");
-//	gtk_about_dialog_set_website_label(about, "http://tomoyo.sourceforge.jp/");
+//	gtk_about_dialog_set_website(about, "http://gpet.sourceforge.jp/");
 
 	pixbuf = get_png_file();
 	if (pixbuf) {

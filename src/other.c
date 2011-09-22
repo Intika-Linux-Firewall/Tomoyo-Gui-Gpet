@@ -450,7 +450,7 @@ static void cb_toggled_conf_file(GtkToggleButton *widget, gboolean *conf_file)
 static gint warning_dialog(char *real_path, gboolean *conf_file)
 {
 	GtkWidget	*dialog;
-	GtkWidget	*vbox;
+	GtkWidget	*vbox, *hbox;
 	GtkWidget	*label;
 	GtkWidget	*conf;
 	gchar		*markup, *str;
@@ -470,7 +470,7 @@ static gint warning_dialog(char *real_path, gboolean *conf_file)
 		GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), vbox);
 
 	label = gtk_label_new(message);
-	gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, TRUE, 5);
 
 	markup = g_markup_printf_escaped(
 	_("<span foreground='red' size='x-large'>Not yet registered</span>\n\n"
@@ -479,17 +479,20 @@ static gint warning_dialog(char *real_path, gboolean *conf_file)
 	gtk_label_set_markup(GTK_LABEL(label), markup);
 	g_free(markup);
 
+	hbox = gtk_hbox_new(FALSE, 15);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 20);
+
 	str = g_strdup_printf(_(" Add %s%s "),
 					CCS_DISK_DIR, CCS_DISK_POLICY_MANAGER);
 	conf = gtk_check_button_new_with_mnemonic(str);
 	g_free(str);
-	gtk_box_pack_start(GTK_BOX(vbox), conf, FALSE, FALSE, 1);
+	gtk_box_pack_end(GTK_BOX(hbox), conf, FALSE, TRUE, 5);
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(conf), *conf_file);
 	g_signal_connect(G_OBJECT(conf), "toggled",
 				G_CALLBACK(cb_toggled_conf_file), conf_file);
 
 	gtk_container_set_border_width(GTK_CONTAINER(dialog), 5);
-//	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_APPLY);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_REJECT);
 	gtk_widget_show_all(dialog);
 	result = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
