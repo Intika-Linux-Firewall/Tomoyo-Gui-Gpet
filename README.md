@@ -2,7 +2,7 @@
 
 Mirror of https://fr.osdn.net/projects/gpet/
 
-# Usage
+**Usage**
 
 ```
 $ gksudo gpet
@@ -21,7 +21,7 @@ $ sudo sh -c 'echo /usr/sbin/gpet >> /etc/{ccs|tomoyo}/manager.conf'
 $ sudo {ccs|tomoyo}-loadpolicy -m < /etc/{ccs|tomoyo}/manager.conf
 ```
 
-# Install
+**Install**
 
 Build / Install / Uninstall
 
@@ -35,13 +35,13 @@ $ make
 $ sudo make install
 ```
 
-# Uninstall
+**Uninstall**
 
 ```
 $ sudo make uninstall
 ```
 
-# Install location
+**Install Location**
 
 ```
 /usr
