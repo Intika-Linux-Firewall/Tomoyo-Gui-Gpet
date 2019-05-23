@@ -1,6 +1,6 @@
 # GPET (Gui Policy Editor for TOMOYO Linux)
 
-Mirror of https://fr.osdn.net/projects/gpet/
+Mirror of https://osdn.net/projects/gpet/
 
 **Usage**
 
